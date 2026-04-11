@@ -176,7 +176,8 @@ Crawler Lambda (stateful in memory)
 EventBridge routes events to SQS queues → Lambda consumers:
 
 **Consumer Lambda** (triggered by `page.crawled` via SQS):
-- Inserts page data into Postgres `pages` table
+- Inserts page data into Postgres `pages` table (upsert on `job_id, url` to handle SQS at-least-once delivery)
+- Inserts `newUrls` into Postgres `discovered_urls` table (for resurrection — the full link frontier)
 - Updates `jobs.updated_at` (acts as implicit heartbeat)
 - Publishes to Redis: `redis.publish("job:{jobId}", { pagesFound })`
 
@@ -195,16 +196,17 @@ There is no separate heartbeat mechanism. The continuous flow of page-result mes
 1. **Monitor Lambda** runs every 2 minutes (CloudWatch cron)
 2. Queries: `SELECT * FROM jobs WHERE status = 'running' AND updated_at < now() - interval '3 minutes'`
 3. For each stale job:
-   a. Query all visited URLs: `SELECT url FROM pages WHERE job_id = $1`
-   b. Re-crawl the root page (shallow, depth 1) to re-discover the link graph
-   c. Compute pending URLs: discovered URLs minus visited URLs
-   d. Enqueue to SQS (jobs): `{ jobId, urls: [pending...], visited: [already crawled...] }`
-   e. Increment `jobs.invocations`
-4. New crawler Lambda picks up the message and resumes from the pending URLs
+   a. Query visited URLs: `SELECT url FROM pages WHERE job_id = $1`
+   b. Query all discovered URLs: `SELECT url FROM discovered_urls WHERE job_id = $1`
+   c. Compute pending: discovered minus visited
+   d. If visited + pending exceed SQS 256KB message limit, store in S3 and pass an S3 key in the message instead
+   e. Enqueue to SQS (jobs): `{ jobId, urls: [pending...], visited: [already crawled...] }` or `{ jobId, stateS3Key: "..." }`
+   f. Increment `jobs.invocations`
+4. New crawler Lambda picks up the message, loads state (from message or S3), and resumes
 
 ### Why the Crawler Receives Visited URLs on Resume
 
-On first run, the crawler starts with an empty visited set. On resume, the monitor includes the visited URLs in the SQS message so the crawler can seed its in-memory visited set and avoid re-crawling pages that are already in Postgres.
+On first run, the crawler starts with an empty visited set. On resume, the monitor includes the visited URLs so the crawler can seed its in-memory visited set and avoid re-crawling pages already in Postgres. For large jobs (5000+ URLs), state is passed via S3 reference to avoid the 256KB SQS message limit.
 
 ### Lambda Configuration
 
@@ -271,16 +273,22 @@ CREATE TABLE pages (
   title           TEXT,
   description     TEXT,
   depth           INT,
-  crawled_at      TIMESTAMPTZ DEFAULT now()
+  crawled_at      TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(job_id, url)  -- dedup for SQS at-least-once delivery
 );
 
--- No pending_urls table — SQS is the pending queue.
--- The crawler holds pending URLs in memory while alive.
--- On resurrection, the monitor re-discovers pending URLs
--- and includes them in the SQS job message.
+-- All URLs discovered during crawl (written by consumer from newUrls in events).
+-- Used by the monitor to reconstruct the pending frontier on resurrection.
+-- Without this, a depth-1 re-crawl of root would miss deep links.
+CREATE TABLE discovered_urls (
+  id              SERIAL PRIMARY KEY,
+  job_id          UUID REFERENCES jobs(id) ON DELETE CASCADE,
+  url             TEXT NOT NULL,
+  UNIQUE(job_id, url)
+);
 
 CREATE INDEX idx_pages_job ON pages(job_id);
-CREATE INDEX idx_pages_job_url ON pages(job_id, url);  -- for resurrection lookups
+CREATE INDEX idx_discovered_job ON discovered_urls(job_id);
 CREATE INDEX idx_jobs_status ON jobs(status, updated_at);
 CREATE INDEX idx_jobs_anon ON jobs(anon_session_id);
 CREATE INDEX idx_jobs_user ON jobs(user_id);
@@ -288,9 +296,9 @@ CREATE INDEX idx_jobs_user ON jobs(user_id);
 
 ### Lifecycle
 
-1. **During crawl**: consumer inserts into `pages` as page-result messages arrive from SQS
+1. **During crawl**: consumer inserts into `pages` and `discovered_urls` as events arrive
 2. **On completion**: Generator Lambda reads all pages, builds llms.txt, writes to S3, archives pages as JSON to S3
-3. **Cleanup**: DELETE from `pages` for the job. `jobs` row stays (with `s3_key` pointing to the result)
+3. **Cleanup**: DELETE from `pages` and `discovered_urls` for the job. `jobs` row stays (with `s3_key` pointing to the result)
 
 ---
 
