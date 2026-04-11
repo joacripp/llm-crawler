@@ -93,7 +93,7 @@ A web application that automatically generates [llms.txt](https://llmstxt.org/) 
 ### Strategy
 
 - **Default: Cheerio** (axios HTTP fetch + cheerio HTML parse) — benchmarked ~5x faster than Playwright across 9 sites
-- **Fallback: Playwright** — activated when SPA detected (empty HTML shell with `#root`/`#app` containers, `<script type="module">`, no static `<a>` links)
+- **Fallback: Playwright** — crawler fetches root page with Cheerio first; if `isSpa()` returns true, the entire crawl restarts using Playwright. Detection is once per job, not per-page.
 
 ### Benchmark Summary
 
@@ -144,11 +144,24 @@ Lambda workers can be killed at any time (timeout, OOM, throttle). There is no S
 4. **Resurrection**: stale jobs are re-enqueued to SQS with incremented `invocations` count
 5. **Resume**: new Lambda loads visited URLs and pending queue from Postgres, continues BFS from where it stopped
 
+### Lambda Configuration
+
+- Timeout: 15 minutes (Lambda maximum)
+- Memory: 1024 MB (Cheerio) / 2048 MB (Playwright)
+- Heartbeat interval: 30 seconds
+- Monitor death threshold: 3 minutes (> 6 missed heartbeats)
+
 ### Failure Limits
 
 - Max invocations per job: 10 (configurable)
 - After max retries: job marked as `failed`
 - Lost work per failure: at most the current in-flight page (single page, not a batch)
+
+### Known Limitations (MVP)
+
+- **robots.txt**: not respected in v1. To be added before production traffic.
+- **Rate limiting**: signup gate prevents anonymous abuse. Per-user concurrent job limits to be added post-MVP.
+- **OAuth**: single provider per user account. Multi-provider linking is a future enhancement.
 
 ---
 
