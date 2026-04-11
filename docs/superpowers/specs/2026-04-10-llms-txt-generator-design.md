@@ -26,7 +26,7 @@ A web application that automatically generates [llms.txt](https://llmstxt.org/) 
 1. Visits the app (React SPA on CloudFront)
 2. Enters a website URL, optionally adjusts depth/page limits
 3. Clicks "Generate" — a job is created, tracked via anonymous cookie (UUID in httpOnly cookie)
-4. Sees real-time progress (pages found, current URL) via polling
+4. Sees real-time progress (pages found) via SSE stream
 5. When complete, can view, copy, and download the llms.txt file
 6. Can close the browser, return later, and still see their job via the cookie
 
@@ -45,30 +45,41 @@ A web application that automatically generates [llms.txt](https://llmstxt.org/) 
 ┌──────────────┐
 │  CloudFront  │──── React SPA (S3 origin)
 └──────┬───────┘
-       │ API calls
+       │ API calls + SSE
        ▼
-┌──────────────┐     ┌──────────┐     ┌─────────────────┐
-│   NestJS     │────►│   SQS    │────►│  Lambda Crawler  │
-│  (ECS Fargate)│    │  (jobs)  │     │  (Cheerio/PW)    │
-│              │     └──────────┘     └────────┬─────────┘
-│  - Auth API  │                               │
-│  - Job API   │     ┌──────────────┐          │ writes pages
-│  - Progress  │     │ EventBridge  │◄─────────┤ emits events
-│    polling   │     └──────┬───────┘          │
-└──────┬───────┘            │                  ▼
-       │              ┌─────┴──────────┐  ┌─────────┐
-       │              │ SQS queues     │  │Postgres │
-       │              │ - progress     │  │ (RDS)   │
-       │              │ - job-completed│  └─────────┘
-       │              │ - heartbeat    │
-       │              └─────┬──────────┘
-       │                    │
-       │              ┌─────┴──────────┐
-       ▼              │ Consumers      │
-  ┌─────────┐         │ - Generator λ  │──► S3 (llms.txt)
-  │Postgres │         │ - Monitor λ    │──► SQS (re-enqueue)
-  │ (RDS)   │         └────────────────┘
-  └─────────┘
+┌──────────────┐     ┌──────────────┐     ┌─────────────────┐
+│   NestJS     │────►│  SQS (jobs)  │────►│  Lambda Crawler  │
+│  (ECS Fargate)│    └──────────────┘     │  (Cheerio/PW)    │
+│              │                          │                  │
+│  - Auth API  │                          │  Stateful in     │
+│  - Job API   │                          │  memory: visited │
+│  - SSE stream│                          │  set + pending   │
+│              │                          │  queue           │
+│  subscribes  │                          └────────┬─────────┘
+│  to Redis    │                                   │
+│  per active  │                       EventBridge (page.crawled)
+│  SSE jobId   │                                   │
+└──────┬───────┘                          ┌────────┴──────────┐
+       │                                  │  EventBridge Rules │
+       │                                  └──┬──────┬──────┬──┘
+       │                                     │      │      │
+       │                                     ▼      │      ▼
+       │                               SQS (pages)  │   SQS (completed)
+       │                                     │      │      │
+       │                                     ▼      │      ▼
+       │                              Consumer λ    │   Generator λ
+       │                                │    │      │      │
+       │                      Postgres ◄┘    └► Redis pub/sub
+       │                                           │      │
+       │                                     ▼     │      ▼
+       │                              Monitor λ    └► Redis pub/sub
+       │                              (cron 2min)
+       │                                │
+       ▼                                ▼
+  ┌─────────┐                    SQS (jobs) re-enqueue
+  │Postgres │
+  │ (RDS)   │            Generator λ ──► S3 (llms.txt)
+  └─────────┘                          ──► Redis pub/sub
 ```
 
 ### Component Responsibilities
@@ -77,13 +88,15 @@ A web application that automatically generates [llms.txt](https://llmstxt.org/) 
 |---|---|
 | **React SPA** | UI: URL input, progress display, results viewer, auth screens, dashboard |
 | **CloudFront** | Serves React app from S3, caches static assets at the edge |
-| **NestJS API** | Auth (JWT), job CRUD, progress polling endpoint, presigned S3 URLs |
-| **SQS (jobs)** | Decouples job submission from crawl execution |
-| **Lambda Crawler** | Pulls from SQS, crawls pages, writes to Postgres, emits events |
+| **NestJS API** | Auth (JWT), job CRUD, SSE stream per job, presigned S3 URLs. Subscribes to Redis `job:{id}` channels for active SSE connections only. |
+| **SQS (jobs)** | Delivers crawl jobs to crawler Lambdas (root URL on first run, pending URLs on resume) |
+| **Lambda Crawler** | Stateful in memory: maintains visited set + pending queue. Emits `page.crawled` and `job.completed` events to EventBridge. Never reads/writes Postgres directly. |
 | **EventBridge** | Routes crawler events to per-type SQS queues |
-| **Lambda Generator** | Triggered by job-completed event, builds llms.txt from pages, writes to S3, cleans up Postgres |
-| **Lambda Monitor** | Cron (every 2 min), detects stale jobs, re-enqueues to SQS |
-| **Postgres (RDS)** | Source of truth: users, sessions, jobs, pages, pending_urls |
+| **Lambda Consumer** | Triggered by `page.crawled` via SQS. Persists page data to Postgres, updates job progress, publishes to Redis `job:{id}` channel. |
+| **Lambda Generator** | Triggered by `job.completed` via SQS. Builds llms.txt from pages table, writes to S3, archives pages, cleans up Postgres, publishes completion to Redis `job:{id}` channel. |
+| **Lambda Monitor** | Cron (every 2 min), detects stale jobs via `jobs.updated_at`, queries Postgres for visited URLs, re-discovers pending URLs, re-enqueues to SQS (jobs). |
+| **Redis (ElastiCache)** | Pub/Sub per job ID. Consumer + Generator publish progress/completion. NestJS subscribes only for jobs with active SSE listeners. Fire-and-forget — no persistence needed. |
+| **Postgres (RDS)** | Source of truth: users, sessions, jobs, pages (written by consumer only) |
 | **S3** | Final llms.txt files, archived page data |
 
 ---
@@ -129,33 +142,81 @@ Where:
 
 ---
 
-## 5. Checkpoint & Resume
+## 5. Crawl Lifecycle & Resume
 
 Lambda workers can be killed at any time (timeout, OOM, throttle). There is no SIGTERM on Lambda timeout. The architecture assumes the worker can die at any moment.
 
-### How It Works
+### Data Flow
 
-1. **Continuous writes**: after each page crawl, the worker atomically writes to Postgres in a transaction:
-   - INSERT the crawled page into `pages`
-   - DELETE the URL from `pending_urls`
-   - INSERT newly discovered URLs into `pending_urls`
-2. **Heartbeat**: worker emits a `crawl.heartbeat` event to EventBridge every ~30 seconds, which also updates `jobs.updated_at`
-3. **Death detection**: Monitor Lambda runs every 2 minutes, queries for jobs where `status = 'running'` and `updated_at` is older than 3 minutes
-4. **Resurrection**: stale jobs are re-enqueued to SQS with incremented `invocations` count
-5. **Resume**: new Lambda loads visited URLs and pending queue from Postgres, continues BFS from where it stopped
+The crawler never reads or writes Postgres directly. It is stateful in memory and emits events to EventBridge:
+
+```
+Crawler Lambda (stateful in memory)
+  │
+  ├── receives SQS message: { jobId, urls: [...] }
+  │     - First run: urls = [rootUrl]
+  │     - Resume: urls = [pending URLs from monitor]
+  │
+  ├── initializes in-memory state:
+  │     - visited: Set (empty on first run, or seeded from message)
+  │     - pending: Queue (from urls in message)
+  │
+  ├── BFS loop:
+  │     ├── pop URL from pending
+  │     ├── fetch + parse page
+  │     ├── emit to EventBridge: page.crawled { jobId, url, title, desc, depth, newUrls }
+  │     │     (if newUrls > 200, split into multiple events to stay under 256KB limit)
+  │     ├── add newUrls to pending (if not in visited)
+  │     ├── add current URL to visited
+  │     └── repeat until pending is empty
+  │
+  └── emit to EventBridge: job.completed { jobId }
+```
+
+EventBridge routes events to SQS queues → Lambda consumers:
+
+**Consumer Lambda** (triggered by `page.crawled` via SQS):
+- Inserts page data into Postgres `pages` table
+- Updates `jobs.updated_at` (acts as implicit heartbeat)
+- Publishes to Redis: `redis.publish("job:{jobId}", { pagesFound })`
+
+**Generator Lambda** (triggered by `job.completed` via SQS):
+- Reads all pages from Postgres, generates llms.txt
+- Writes llms.txt + pages archive to S3
+- Cleans up Postgres (DELETE pages for job)
+- Publishes to Redis: `redis.publish("job:{jobId}", { status: "completed", downloadUrl })`
+
+### Heartbeat via Message Flow
+
+There is no separate heartbeat mechanism. The continuous flow of page-result messages to SQS serves as the liveness signal. The consumer updates `jobs.updated_at` on every page write. If messages stop flowing, `updated_at` goes stale, and the monitor detects it.
+
+### Death Detection & Resurrection
+
+1. **Monitor Lambda** runs every 2 minutes (CloudWatch cron)
+2. Queries: `SELECT * FROM jobs WHERE status = 'running' AND updated_at < now() - interval '3 minutes'`
+3. For each stale job:
+   a. Query all visited URLs: `SELECT url FROM pages WHERE job_id = $1`
+   b. Re-crawl the root page (shallow, depth 1) to re-discover the link graph
+   c. Compute pending URLs: discovered URLs minus visited URLs
+   d. Enqueue to SQS (jobs): `{ jobId, urls: [pending...], visited: [already crawled...] }`
+   e. Increment `jobs.invocations`
+4. New crawler Lambda picks up the message and resumes from the pending URLs
+
+### Why the Crawler Receives Visited URLs on Resume
+
+On first run, the crawler starts with an empty visited set. On resume, the monitor includes the visited URLs in the SQS message so the crawler can seed its in-memory visited set and avoid re-crawling pages that are already in Postgres.
 
 ### Lambda Configuration
 
 - Timeout: 15 minutes (Lambda maximum)
 - Memory: 1024 MB (Cheerio) / 2048 MB (Playwright)
-- Heartbeat interval: 30 seconds
-- Monitor death threshold: 3 minutes (> 6 missed heartbeats)
+- Monitor death threshold: 3 minutes (no page-results messages = stale)
 
 ### Failure Limits
 
 - Max invocations per job: 10 (configurable)
 - After max retries: job marked as `failed`
-- Lost work per failure: at most the current in-flight page (single page, not a batch)
+- Lost work per failure: pages discovered in memory but not yet pushed to SQS (typically a few URLs from the current BFS frontier)
 
 ### Known Limitations (MVP)
 
@@ -202,7 +263,7 @@ CREATE TABLE jobs (
   updated_at      TIMESTAMPTZ DEFAULT now()
 );
 
--- Crawled pages (active during crawl, archived after)
+-- Crawled pages (written by consumer, archived after completion)
 CREATE TABLE pages (
   id              SERIAL PRIMARY KEY,
   job_id          UUID REFERENCES jobs(id) ON DELETE CASCADE,
@@ -213,16 +274,13 @@ CREATE TABLE pages (
   crawled_at      TIMESTAMPTZ DEFAULT now()
 );
 
--- BFS queue (URLs discovered but not yet crawled)
-CREATE TABLE pending_urls (
-  id              SERIAL PRIMARY KEY,
-  job_id          UUID REFERENCES jobs(id) ON DELETE CASCADE,
-  url             TEXT NOT NULL,
-  depth           INT
-);
+-- No pending_urls table — SQS is the pending queue.
+-- The crawler holds pending URLs in memory while alive.
+-- On resurrection, the monitor re-discovers pending URLs
+-- and includes them in the SQS job message.
 
 CREATE INDEX idx_pages_job ON pages(job_id);
-CREATE INDEX idx_pending_job ON pending_urls(job_id);
+CREATE INDEX idx_pages_job_url ON pages(job_id, url);  -- for resurrection lookups
 CREATE INDEX idx_jobs_status ON jobs(status, updated_at);
 CREATE INDEX idx_jobs_anon ON jobs(anon_session_id);
 CREATE INDEX idx_jobs_user ON jobs(user_id);
@@ -230,36 +288,54 @@ CREATE INDEX idx_jobs_user ON jobs(user_id);
 
 ### Lifecycle
 
-1. **During crawl**: `pages` and `pending_urls` grow as the crawler works
+1. **During crawl**: consumer inserts into `pages` as page-result messages arrive from SQS
 2. **On completion**: Generator Lambda reads all pages, builds llms.txt, writes to S3, archives pages as JSON to S3
-3. **Cleanup**: DELETE from `pages` and `pending_urls` for the job. `jobs` row stays (with `s3_key` pointing to the result)
+3. **Cleanup**: DELETE from `pages` for the job. `jobs` row stays (with `s3_key` pointing to the result)
 
 ---
 
 ## 7. Event System
 
+EventBridge is the single event bus. The crawler emits all events to EventBridge. Rules route them to SQS queues that trigger consumers.
+
 ### EventBridge Events
 
 All events go to a custom event bus `llm-crawler-events`.
 
-| Event | DetailType | Payload | Purpose |
+| Event | DetailType | Producer | Payload |
 |---|---|---|---|
-| Page crawled | `page.crawled` | `{ jobId, pagesFound }` | Progress tracking |
-| Heartbeat | `crawl.heartbeat` | `{ jobId }` | Liveness signal |
-| Job completed | `job.completed` | `{ jobId }` | Triggers llms.txt generation |
+| `page.crawled` | Crawler Lambda | `{ jobId, url, title, desc, depth, newUrls }` |
+| `job.completed` | Crawler Lambda | `{ jobId }` |
 
-Events are intentionally thin — just notifications. Consumers query Postgres for details.
+**Event size limit:** EventBridge has a 256KB max per event. If a page has >200 discovered URLs, the crawler splits `newUrls` across multiple `page.crawled` events.
 
-### SQS Routing
+### EventBridge → SQS Routing
 
-EventBridge rules route events to dedicated SQS queues:
-
-| Queue | Source event | Consumer |
+| Rule matches | Target SQS queue | Consumer |
 |---|---|---|
-| `crawl-jobs` | API (direct) | Crawler Lambda |
-| `crawl-progress` | `page.crawled` | (consumed by API for polling cache, optional) |
-| `crawl-completed` | `job.completed` | Generator Lambda |
-| `crawl-heartbeat` | `crawl.heartbeat` | (updates jobs.updated_at via small Lambda or direct DB write) |
+| `page.crawled` | `crawl-pages` | Consumer Lambda |
+| `job.completed` | `crawl-completed` | Generator Lambda |
+
+### SQS Queues
+
+| Queue | Producer | Consumer | Purpose |
+|---|---|---|---|
+| `crawl-jobs` | NestJS API (new), Monitor (resume) | Crawler Lambda | Job dispatch |
+| `crawl-pages` | EventBridge rule | Consumer Lambda | Page persistence |
+| `crawl-completed` | EventBridge rule | Generator Lambda | llms.txt generation |
+
+### Redis Pub/Sub (Real-Time Progress)
+
+Consumer and Generator Lambdas publish to Redis after processing:
+
+| Channel | Publisher | Payload | Subscriber |
+|---|---|---|---|
+| `job:{jobId}` | Consumer Lambda | `{ type: "progress", pagesFound }` | NestJS (if SSE active) |
+| `job:{jobId}` | Generator Lambda | `{ type: "completed", downloadUrl }` | NestJS (if SSE active) |
+
+NestJS subscribes to `job:{jobId}` only when a client opens an SSE connection for that job. On SSE disconnect, it unsubscribes. If nobody is listening, Redis messages are discarded — zero cost.
+
+No separate heartbeat — `jobs.updated_at` is updated by the consumer on every page write, serving as the implicit liveness signal for the monitor.
 
 ### DLQ Strategy
 
@@ -323,30 +399,22 @@ Each SQS queue has a Dead Letter Queue. Messages that fail 3 times go to DLQ. Cl
 | `POST` | `/api/auth/refresh` | Refresh access token |
 | `POST` | `/api/auth/logout` | Clear tokens |
 
-### Progress Polling
+### Real-Time Progress (SSE)
 
-Frontend polls `GET /api/jobs/:id` every 2-3 seconds while status is `running`. Response:
+Frontend opens `GET /api/jobs/:id/stream` (Server-Sent Events). NestJS subscribes to Redis `job:{jobId}` and relays events:
 
-```json
-{
-  "id": "abc-123",
-  "rootUrl": "https://example.com",
-  "status": "running",
-  "pagesFound": 847,
-  "updatedAt": "2026-04-10T12:03:04Z"
-}
+```
+event: progress
+data: {"pagesFound": 847}
+
+event: progress
+data: {"pagesFound": 848}
+
+event: completed
+data: {"pagesFound": 1203, "downloadUrl": "https://s3-presigned-url/llms.txt"}
 ```
 
-When `status: "completed"`:
-
-```json
-{
-  "id": "abc-123",
-  "status": "completed",
-  "pagesFound": 1203,
-  "downloadUrl": "https://s3-presigned-url/llms.txt"
-}
-```
+On SSE disconnect, NestJS unsubscribes from Redis. When user reconnects (or refreshes), `GET /api/jobs/:id` returns current state from Postgres as a fallback.
 
 ---
 
@@ -363,7 +431,7 @@ When `status: "completed"`:
 
 ### Key Behaviors
 
-- **Progress view**: polls API every 2-3s, shows animated counter + current URL being crawled
+- **Progress view**: SSE connection to `/api/jobs/:id/stream`, shows animated counter + pages found. Falls back to polling `GET /api/jobs/:id` on reconnect.
 - **Result view**: llms.txt rendered in monospace textarea, copy + download buttons
 - **Anonymous tracking**: stores `session_id` cookie on first job creation
 - **Signup gate**: intercepted at second job attempt, shows auth modal, resumes after signup
@@ -408,9 +476,10 @@ llm-crawler-results/
 | RDS Postgres | Database |
 | ECS Fargate cluster + service | NestJS API |
 | ECR repository | NestJS container image |
-| Lambda functions (4) | Crawler, Generator, Monitor, Heartbeat updater |
-| SQS queues (4) + DLQs | Job dispatch, progress, completed, heartbeat |
-| EventBridge bus + rules | Event routing |
+| ElastiCache Redis | Pub/Sub for real-time progress to NestJS |
+| Lambda functions (4) | Crawler, Consumer, Generator, Monitor |
+| SQS queues (3) + DLQs | Job dispatch (crawl-jobs), pages (crawl-pages), completed (crawl-completed) |
+| EventBridge bus + rules | Routes crawler events to SQS queues |
 | S3 buckets (2) | Results + React app static hosting |
 | CloudFront distribution | CDN for React app |
 | ACM certificate | HTTPS |
