@@ -474,7 +474,29 @@ llm-crawler-results/
 
 ---
 
-## 12. Infrastructure (Terraform)
+## 12. Repository Structure
+
+Monorepo with npm workspaces. Shared types and Prisma client across all packages.
+
+```
+llm-crawler/
+├── packages/
+│   ├── api/            # NestJS (ECS Fargate) — auth, job CRUD, SSE
+│   ├── web/            # React SPA (CloudFront) — Vite + Tailwind
+│   ├── crawler/        # Lambda: BFS crawler (Cheerio/Playwright)
+│   ├── consumer/       # Lambda: persists pages + discovered_urls, Redis pub
+│   ├── generator/      # Lambda: builds llms.txt, writes S3, cleanup
+│   ├── monitor/        # Lambda: resurrection cron
+│   └── shared/         # PageData types, Prisma client, utils
+├── infra/              # Terraform
+├── docs/
+├── package.json        # workspace root
+└── turbo.json          # Turborepo config
+```
+
+---
+
+## 13. Infrastructure (Terraform)
 
 ### Resources
 
@@ -501,7 +523,7 @@ llm-crawler-results/
 
 ---
 
-## 13. CI/CD (GitHub Actions)
+## 14. CI/CD (GitHub Actions)
 
 ### Pipelines
 
@@ -519,7 +541,7 @@ llm-crawler-results/
 
 ---
 
-## 14. llms.txt Generation
+## 15. llms.txt Generation
 
 ### Format (per spec)
 
