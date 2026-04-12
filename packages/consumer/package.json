@@ -4,7 +4,18 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "scripts": { "build": "tsc", "test": "vitest run", "clean": "rm -rf dist" },
-  "dependencies": { "@llm-crawler/shared": "*", "@prisma/client": "^5.0.0" },
-  "devDependencies": { "vitest": "^3.1.1", "@types/node": "^22.10.7", "@types/aws-lambda": "^8.10.0" }
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@llm-crawler/shared": "*",
+    "@prisma/client": "^7.7.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.0",
+    "@types/node": "^22.10.7",
+    "vitest": "^3.1.1"
+  }
 }

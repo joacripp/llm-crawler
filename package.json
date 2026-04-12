@@ -12,11 +12,12 @@
     "clean": "turbo clean"
   },
   "devDependencies": {
-    "prisma": "^5.22.0",
+    "prisma": "^7.7.0",
     "turbo": "^2.5.0",
     "typescript": "^5.7.3"
   },
   "dependencies": {
-    "@prisma/client": "^5.22.0"
+    "@prisma/adapter-pg": "^7.7.0",
+    "@prisma/client": "^7.7.0"
   }
 }
