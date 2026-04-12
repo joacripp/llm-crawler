@@ -4,10 +4,11 @@ import { SessionMiddleware } from './session/session.middleware.js';
 import { AuthModule } from './auth/auth.module.js';
 import { JobsModule } from './jobs/jobs.module.js';
 import { SseModule } from './sse/sse.module.js';
+import { HealthController } from './health.controller.js';
 
 @Module({
   imports: [SessionModule, AuthModule, JobsModule, SseModule],
-  controllers: [],
+  controllers: [HealthController],
   providers: [],
 })
 export class AppModule implements NestModule {
