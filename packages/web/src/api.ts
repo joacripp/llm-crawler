@@ -13,6 +13,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  me: () => request<{ id: string; email: string }>('/api/auth/me'),
   createJob: (data: { url: string; maxDepth?: number; maxPages?: number }) =>
     request<{ id: string }>('/api/jobs', { method: 'POST', body: JSON.stringify(data) }),
   getJob: (id: string) =>

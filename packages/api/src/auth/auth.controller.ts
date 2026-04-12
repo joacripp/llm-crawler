@@ -1,13 +1,21 @@
-import { Controller, Post, Body, Res, UnauthorizedException } from '@nestjs/common';
-import { Response } from 'express';
+import { Controller, Post, Get, Body, Res, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { Response, Request } from 'express';
 import { AuthService } from './auth.service.js';
 import { SessionService } from '../session/session.service.js';
 import { SignupDto } from './dto/signup.dto.js';
 import { LoginDto } from './dto/login.dto.js';
+import { JwtAuthGuard } from './jwt-auth.guard.js';
 
 @Controller('api/auth')
 export class AuthController {
   constructor(private authService: AuthService, private sessionService: SessionService) {}
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  async me(@Req() req: Request) {
+    const user = (req as any).user;
+    return { id: user.id, email: user.email };
+  }
 
   @Post('signup')
   async signup(@Body() dto: SignupDto, @Res({ passthrough: true }) res: Response) {
@@ -23,6 +31,8 @@ export class AuthController {
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
     const user = await this.authService.validateUser(dto.email, dto.password);
     if (!user) throw new UnauthorizedException('Invalid credentials');
+    const sessionId = (res.req as any).sessionId;
+    if (sessionId) await this.sessionService.linkToUser(sessionId, user.id);
     const tokens = this.authService.generateTokens(user);
     this.setTokenCookies(res, tokens);
     return { id: user.id, email: user.email };

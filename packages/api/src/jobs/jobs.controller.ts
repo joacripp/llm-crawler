@@ -42,6 +42,6 @@ export class JobsController {
   @Get()
   @UseGuards(JwtAuthGuard)
   async listJobs(@Req() req: Request) {
-    return this.jobsService.listJobs((req as any).user.id);
+    return this.jobsService.listJobs((req as any).user.id, (req as any).sessionId);
   }
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, SignupRequiredError } from '../api.js';
+import { useAuth } from '../context/AuthContext.js';
 import AuthModal from '../components/AuthModal.js';
 import Layout from '../components/Layout.js';
 
@@ -13,6 +14,7 @@ export default function HomePage() {
   const [showAuth, setShowAuth] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { setUser } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setError(''); setLoading(true);
@@ -24,8 +26,8 @@ export default function HomePage() {
   };
 
   const handleAuth = async (email: string, password: string, mode: 'signup' | 'login') => {
-    if (mode === 'signup') await api.signup(email, password);
-    else await api.login(email, password);
+    const user = mode === 'signup' ? await api.signup(email, password) : await api.login(email, password);
+    setUser({ id: user.id, email: user.email });
     setShowAuth(false);
     const job = await api.createJob({ url, maxDepth, maxPages });
     navigate(`/jobs/${job.id}`);
