@@ -82,8 +82,11 @@ jobs:
       - run: npx prisma generate
       - run: npm run build
       - run: |
-          cd packages/${{ matrix.lambda }}
-          zip -r ../../${{ matrix.lambda }}.zip dist/ node_modules/
+          mkdir -p /tmp/lambda-${{ matrix.lambda }}
+          cp -r packages/${{ matrix.lambda }}/dist/* /tmp/lambda-${{ matrix.lambda }}/
+          echo '{"type":"module"}' > /tmp/lambda-${{ matrix.lambda }}/package.json
+          cp -r node_modules /tmp/lambda-${{ matrix.lambda }}/
+          cd /tmp/lambda-${{ matrix.lambda }} && zip -r $GITHUB_WORKSPACE/${{ matrix.lambda }}.zip .
       - run: |
           aws lambda update-function-code \
             --function-name ${{ secrets.PROJECT }}-${{ secrets.ENVIRONMENT }}-${{ matrix.lambda }} \

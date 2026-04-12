@@ -55,7 +55,7 @@ resource "aws_iam_role_policy" "lambda" {
 resource "aws_lambda_function" "crawler" {
   function_name = "${var.project}-${var.environment}-crawler"
   role          = aws_iam_role.lambda.arn
-  handler       = "dist/index.handler"
+  handler       = "index.handler"
   runtime       = "nodejs20.x"
   timeout       = 900  # 15 minutes
   memory_size   = 1024
@@ -85,7 +85,7 @@ resource "aws_lambda_event_source_mapping" "crawler_sqs" {
 resource "aws_lambda_function" "consumer" {
   function_name = "${var.project}-${var.environment}-consumer"
   role          = aws_iam_role.lambda.arn
-  handler       = "dist/index.handler"
+  handler       = "index.handler"
   runtime       = "nodejs20.x"
   timeout       = 60
   memory_size   = 256
@@ -116,7 +116,7 @@ resource "aws_lambda_event_source_mapping" "consumer_sqs" {
 resource "aws_lambda_function" "generator" {
   function_name = "${var.project}-${var.environment}-generator"
   role          = aws_iam_role.lambda.arn
-  handler       = "dist/index.handler"
+  handler       = "index.handler"
   runtime       = "nodejs20.x"
   timeout       = 300
   memory_size   = 512
@@ -148,7 +148,7 @@ resource "aws_lambda_event_source_mapping" "generator_sqs" {
 resource "aws_lambda_function" "monitor" {
   function_name = "${var.project}-${var.environment}-monitor"
   role          = aws_iam_role.lambda.arn
-  handler       = "dist/index.handler"
+  handler       = "index.handler"
   runtime       = "nodejs20.x"
   timeout       = 60
   memory_size   = 256
