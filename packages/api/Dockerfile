@@ -23,6 +23,8 @@ RUN npm run build --workspace=packages/api
 # --- Production stage ---
 FROM node:20-slim
 
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 COPY --from=builder /app/package.json /app/package-lock.json ./
