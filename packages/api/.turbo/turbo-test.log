@@ -1,0 +1,17 @@
+
+> @llm-crawler/api@0.0.1 test
+> vitest run
+
+
+ RUN  v3.2.4 /Users/joaquincrippa/projects/profound/llm-crawler/packages/api
+
+ ✓ tests/sse.service.spec.ts (2 tests) 26ms
+ ✓ tests/jobs.service.spec.ts (5 tests) 4ms
+ ✓ tests/session.service.spec.ts (4 tests) 4ms
+ ✓ tests/auth.service.spec.ts (5 tests) 22ms
+
+ Test Files  4 passed (4)
+      Tests  16 passed (16)
+   Start at  00:26:48
+   Duration  1.38s (transform 263ms, setup 0ms, collect 1.53s, tests 56ms, environment 0ms, prepare 1.11s)
+

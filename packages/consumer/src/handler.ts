@@ -10,7 +10,7 @@ export async function handler(event: SQSEvent): Promise<void> {
       const detail: PageCrawledEvent = envelope.detail;
       const { jobId, url, title, description, depth, newUrls } = detail;
 
-      await prisma.$transaction(async (tx) => {
+      await prisma.$transaction(async (tx: any) => {
         await tx.page.upsert({
           where: { jobId_url: { jobId, url } },
           create: { jobId, url, title, description, depth },

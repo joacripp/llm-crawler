@@ -1,0 +1,18 @@
+
+> @llm-crawler/crawler@0.0.1 test
+> vitest run
+
+
+ RUN  v3.2.4 /Users/joaquincrippa/projects/profound/llm-crawler/packages/crawler
+
+ ✓ tests/event-emitter.test.ts (3 tests) 3ms
+ ✓ tests/parser.test.ts (10 tests) 20ms
+ ✓ tests/spa-detector.test.ts (5 tests) 18ms
+ ✓ tests/crawl.test.ts (4 tests) 28ms
+ ✓ tests/handler.test.ts (4 tests) 196ms
+
+ Test Files  5 passed (5)
+      Tests  26 passed (26)
+   Start at  00:26:48
+   Duration  1.64s (transform 1.14s, setup 0ms, collect 3.19s, tests 265ms, environment 1ms, prepare 3.09s)
+

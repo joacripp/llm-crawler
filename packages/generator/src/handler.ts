@@ -18,7 +18,7 @@ export async function handler(event: SQSEvent): Promise<void> {
       const rootUrl = job.rootUrl;
 
       const pages = await prisma.page.findMany({ where: { jobId } });
-      const pageData: PageData[] = pages.map((p) => ({
+      const pageData: PageData[] = pages.map((p: any) => ({
         url: p.url, title: p.title ?? p.url, description: p.description ?? '', depth: p.depth ?? 0,
       }));
 

@@ -20,10 +20,10 @@ export async function handler(): Promise<void> {
         continue;
       }
       const visitedRows = await prisma.page.findMany({ where: { jobId: job.id }, select: { url: true } });
-      const visited = visitedRows.map((r) => r.url);
+      const visited = visitedRows.map((r: any) => r.url);
       const visitedSet = new Set(visited);
       const discoveredRows = await prisma.discoveredUrl.findMany({ where: { jobId: job.id }, select: { url: true } });
-      const pending = discoveredRows.map((r) => r.url).filter((url) => !visitedSet.has(url));
+      const pending = discoveredRows.map((r: any) => r.url).filter((url: string) => !visitedSet.has(url));
       if (pending.length === 0) {
         await sqs.send(new SendMessageCommand({
           QueueUrl: completedQueueUrl,

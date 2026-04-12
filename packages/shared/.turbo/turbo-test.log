@@ -1,0 +1,17 @@
+
+> @llm-crawler/shared@0.0.1 test
+> vitest run
+
+
+ RUN  v3.2.4 /Users/joaquincrippa/projects/profound/llm-crawler/packages/shared
+
+ ✓ tests/types.test.ts (6 tests) 4ms
+ ✓ tests/redis.test.ts (2 tests) 6ms
+ ✓ tests/url-utils.test.ts (15 tests) 6ms
+ ✓ tests/generator.test.ts (5 tests) 24ms
+
+ Test Files  4 passed (4)
+      Tests  28 passed (28)
+   Start at  00:26:48
+   Duration  1.26s (transform 247ms, setup 0ms, collect 526ms, tests 40ms, environment 1ms, prepare 1.02s)
+

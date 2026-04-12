@@ -1,0 +1,14 @@
+
+> @llm-crawler/consumer@0.0.1 test
+> vitest run
+
+
+ RUN  v3.2.4 /Users/joaquincrippa/projects/profound/llm-crawler/packages/consumer
+
+ ✓ tests/handler.test.ts (4 tests) 4ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  00:26:48
+   Duration  1.35s (transform 176ms, setup 0ms, collect 517ms, tests 4ms, environment 0ms, prepare 204ms)
+
