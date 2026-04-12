@@ -33,7 +33,7 @@ export async function handler(event: SQSEvent): Promise<void> {
       await s3.send(new PutObjectCommand({ Bucket: bucket, Key: `results/${jobId}/pages.json`, Body: JSON.stringify(pageData, null, 2), ContentType: 'application/json' }));
       console.log(`[generator] job=${jobId} uploaded to S3: ${s3Key}`);
 
-      await prisma.job.update({ where: { id: jobId }, data: { status: 'completed', s3Key } });
+      await prisma.job.update({ where: { id: jobId }, data: { status: 'completed', s3Key, pagesFound: pages.length } });
       await prisma.page.deleteMany({ where: { jobId } });
       await prisma.discoveredUrl.deleteMany({ where: { jobId } });
       console.log(`[generator] job=${jobId} completed — DB cleaned up`);

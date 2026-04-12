@@ -38,6 +38,7 @@ model Job {
   maxPages       Int      @default(200) @map("max_pages")
   status         String   @default("pending")
   s3Key          String?  @map("s3_key")
+  pagesFound     Int      @default(0) @map("pages_found")
   invocations    Int      @default(0)
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")

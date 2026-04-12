@@ -31,7 +31,13 @@ export class JobsService {
     const prisma = getPrisma();
     const job = await prisma.job.findUnique({ where: { id: jobId } });
     if (!job) throw new NotFoundException('Job not found');
-    const pagesFound = await prisma.page.count({ where: { jobId } });
+
+    // For completed jobs, use the stored count (pages are deleted after completion)
+    // For in-progress jobs, count from the pages table
+    const pagesFound = job.status === 'completed'
+      ? job.pagesFound
+      : await prisma.page.count({ where: { jobId } });
+
     return { ...job, pagesFound };
   }
 
