@@ -2,3 +2,6 @@
 .superpowers/
 node_modules
 .terraform/
+.turbo/
+dist/
+node_modules/
