@@ -1,0 +1,10 @@
+{
+  "name": "@llm-crawler/generator",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": { "build": "tsc", "test": "vitest run", "clean": "rm -rf dist" },
+  "dependencies": { "@llm-crawler/shared": "*", "@prisma/client": "^5.0.0", "@aws-sdk/client-s3": "^3.700.0" },
+  "devDependencies": { "vitest": "^3.1.1", "@types/node": "^22.10.7", "@types/aws-lambda": "^8.10.0" }
+}
