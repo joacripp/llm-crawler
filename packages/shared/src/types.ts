@@ -27,3 +27,15 @@ export interface PageCrawledEvent {
 export interface JobCompletedEvent {
   jobId: string;
 }
+
+export interface RedisProgressMessage {
+  type: 'progress';
+  pagesFound: number;
+}
+
+export interface RedisCompletedMessage {
+  type: 'completed';
+  downloadUrl: string;
+}
+
+export type RedisJobMessage = RedisProgressMessage | RedisCompletedMessage;
