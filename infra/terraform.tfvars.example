@@ -1,0 +1,4 @@
+aws_region  = "us-east-1"
+environment = "dev"
+project     = "llm-crawler"
+jwt_secret  = "CHANGE_ME_TO_A_RANDOM_SECRET"
