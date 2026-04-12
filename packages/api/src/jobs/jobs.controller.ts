@@ -1,4 +1,5 @@
-import { Controller, Post, Get, Param, Body, UseGuards, Req } from '@nestjs/common';
+import { Controller, Post, Get, Param, Body, UseGuards, Req, Res, Header } from '@nestjs/common';
+import { Response } from 'express';
 import { Request } from 'express';
 import { JobsService } from './jobs.service.js';
 import { CreateJobDto } from './dto/create-job.dto.js';
@@ -28,6 +29,14 @@ export class JobsController {
     const url = await this.jobsService.getPresignedUrl(id);
     if (!url) return { error: 'Result not ready' };
     return { downloadUrl: url };
+  }
+
+  @Get(':id/content')
+  @Header('Content-Type', 'text/plain')
+  async getContent(@Param('id') id: string, @Res() res: Response) {
+    const content = await this.jobsService.getContent(id);
+    if (!content) { res.status(404).json({ error: 'Result not ready' }); return; }
+    res.send(content);
   }
 
   @Get()

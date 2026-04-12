@@ -14,22 +14,14 @@ export default function ResultView({ jobId, pagesFound, rootUrl }: ResultViewPro
   const [error, setError] = useState<string>();
 
   useEffect(() => {
-    api.getResult(jobId).then(async (r) => {
-      if (r.downloadUrl) {
-        try {
-          const res = await fetch(r.downloadUrl);
-          if (!res.ok) throw new Error(`S3 fetch failed: ${res.status}`);
-          const text = await res.text();
-          setLlmsTxt(text);
-        } catch (err) {
-          console.error('Failed to fetch llms.txt from S3:', err);
-          setError('Failed to load result. The presigned URL may have expired.');
-        }
+    api.getContent(jobId).then((content) => {
+      if (content) {
+        setLlmsTxt(content);
       } else {
-        setError(r.error ?? 'Result not available yet');
+        setError('Result not available yet');
       }
     }).catch((err) => {
-      console.error('Failed to get result URL:', err);
+      console.error('Failed to load content:', err);
       setError('Failed to load result');
     }).finally(() => setLoading(false));
   }, [jobId]);
@@ -82,9 +74,7 @@ export default function ResultView({ jobId, pagesFound, rootUrl }: ResultViewPro
         </div>
       </div>
 
-      {error && (
-        <p className="text-sm text-red-500">{error}</p>
-      )}
+      {error && <p className="text-sm text-red-500">{error}</p>}
 
       {llmsTxt && (
         <textarea

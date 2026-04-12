@@ -55,4 +55,14 @@ export class JobsService {
     const s3 = new S3Client();
     return getSignedUrl(s3, new GetObjectCommand({ Bucket: process.env.S3_BUCKET, Key: job.s3Key }), { expiresIn: 86400 });
   }
+
+  async getContent(jobId: string): Promise<string | null> {
+    const prisma = getPrisma();
+    const job = await prisma.job.findUnique({ where: { id: jobId } });
+    if (!job?.s3Key) return null;
+    const { S3Client, GetObjectCommand } = await import('@aws-sdk/client-s3');
+    const s3 = new S3Client();
+    const response = await s3.send(new GetObjectCommand({ Bucket: process.env.S3_BUCKET, Key: job.s3Key }));
+    return response.Body?.transformToString() ?? null;
+  }
 }

@@ -3,6 +3,17 @@ resource "aws_s3_bucket" "results" {
   tags   = { Name = "${var.project}-${var.environment}-results" }
 }
 
+resource "aws_s3_bucket_cors_configuration" "results" {
+  bucket = aws_s3_bucket.results.id
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["GET"]
+    allowed_origins = ["*"]
+    max_age_seconds = 3600
+  }
+}
+
 resource "aws_s3_bucket_lifecycle_configuration" "results" {
   bucket = aws_s3_bucket.results.id
 

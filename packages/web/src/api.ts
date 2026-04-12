@@ -19,6 +19,11 @@ export const api = {
     request<{ id: string; status: string; pagesFound: number; rootUrl: string; s3Key?: string }>(`/api/jobs/${id}`),
   getResult: (id: string) =>
     request<{ downloadUrl?: string; error?: string }>(`/api/jobs/${id}/result`),
+  getContent: async (id: string): Promise<string | null> => {
+    const res = await fetch(`/api/jobs/${id}/content`, { credentials: 'include' });
+    if (!res.ok) return null;
+    return res.text();
+  },
   listJobs: () =>
     request<Array<{ id: string; rootUrl: string; status: string; createdAt: string }>>('/api/jobs'),
   signup: (email: string, password: string) =>
