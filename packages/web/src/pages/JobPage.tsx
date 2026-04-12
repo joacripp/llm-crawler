@@ -9,19 +9,37 @@ import ResultView from '../components/ResultView.js';
 export default function JobPage() {
   const { id } = useParams<{ id: string }>();
   const [initialStatus, setInitialStatus] = useState<string | null>(null);
+  const [initialPagesFound, setInitialPagesFound] = useState(0);
   const [rootUrl, setRootUrl] = useState<string>();
-  const stream = useJobStream(initialStatus === 'running' || initialStatus === 'pending' ? id! : null);
+
+  const shouldStream = initialStatus === 'running' || initialStatus === 'pending';
+  const stream = useJobStream(shouldStream ? id! : null);
 
   useEffect(() => {
     if (!id) return;
     api.getJob(id).then((job) => {
       setInitialStatus(job.status);
+      setInitialPagesFound(job.pagesFound);
       setRootUrl(job.rootUrl);
     });
   }, [id]);
 
+  // Also poll while streaming to detect completion if SSE doesn't connect
+  useEffect(() => {
+    if (!id || !shouldStream) return;
+    const interval = setInterval(() => {
+      api.getJob(id).then((job) => {
+        if (job.status === 'completed') {
+          setInitialStatus('completed');
+          setInitialPagesFound(job.pagesFound);
+        }
+      }).catch(() => {});
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [id, shouldStream]);
+
   const isComplete = initialStatus === 'completed' || stream.status === 'completed';
-  const pagesFound = stream.pagesFound || 0;
+  const pagesFound = stream.pagesFound || initialPagesFound;
 
   return (
     <Layout>
