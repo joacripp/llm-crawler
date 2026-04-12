@@ -107,12 +107,18 @@ module "api" {
   jobs_queue_url           = module.queues.crawl_jobs_queue_url
   results_bucket           = module.storage.results_bucket_name
   jwt_secret               = var.jwt_secret
+  domain                   = var.domain
+  certificate_arn          = var.certificate_arn
+  hosted_zone_id           = var.hosted_zone_id
 }
 
 module "cdn" {
-  source      = "./modules/cdn"
-  environment = var.environment
-  project     = var.project
-  spa_bucket  = module.storage.spa_bucket_name
+  source                     = "./modules/cdn"
+  environment                = var.environment
+  project                    = var.project
+  spa_bucket                 = module.storage.spa_bucket_name
   spa_bucket_regional_domain = module.storage.spa_bucket_regional_domain
+  domain                     = var.domain
+  certificate_arn            = var.certificate_arn
+  hosted_zone_id             = var.hosted_zone_id
 }
