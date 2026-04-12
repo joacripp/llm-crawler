@@ -81,10 +81,10 @@ jobs:
       - run: npm ci
       - run: npx prisma generate
       - run: npm run build
-      - run: npx esbuild packages/${{ matrix.lambda }}/src/index.ts --bundle --platform=node --target=node20 --format=esm --outfile=/tmp/${{ matrix.lambda }}.mjs --external:@aws-sdk/* --external:playwright
+      - run: npx esbuild packages/${{ matrix.lambda }}/src/index.ts --bundle --platform=node --target=node20 --format=cjs --outfile=/tmp/${{ matrix.lambda }}.js --external:@aws-sdk/* --external:playwright
       - run: |
           mkdir -p /tmp/lambda-${{ matrix.lambda }}
-          cp /tmp/${{ matrix.lambda }}.mjs /tmp/lambda-${{ matrix.lambda }}/index.mjs
+          cp /tmp/${{ matrix.lambda }}.js /tmp/lambda-${{ matrix.lambda }}/index.js
           cd /tmp/lambda-${{ matrix.lambda }} && zip -r $GITHUB_WORKSPACE/${{ matrix.lambda }}.zip .
       - run: |
           aws lambda update-function-code \
