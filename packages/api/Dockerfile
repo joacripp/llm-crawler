@@ -31,7 +31,8 @@ COPY --from=builder /app/packages/shared/dist ./packages/shared/dist/
 COPY --from=builder /app/packages/api/package.json ./packages/api/
 COPY --from=builder /app/packages/api/dist ./packages/api/dist/
 COPY --from=builder /app/node_modules ./node_modules/
+COPY --from=builder /app/prisma ./prisma/
 
 EXPOSE 3000
 
-CMD ["node", "packages/api/dist/main.js"]
+CMD ["sh", "-c", "npx prisma db push --skip-generate --accept-data-loss && node packages/api/dist/main.js"]
