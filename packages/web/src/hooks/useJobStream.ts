@@ -19,7 +19,8 @@ export function useJobStream(jobId: string | null): StreamState {
   useEffect(() => {
     if (!jobId) return;
 
-    const source = new EventSource(`/api/jobs/${jobId}/stream`);
+    const apiBase = import.meta.env.VITE_API_URL ?? '';
+    const source = new EventSource(`${apiBase}/api/jobs/${jobId}/stream`);
     sourceRef.current = source;
 
     source.addEventListener('progress', (e) => {

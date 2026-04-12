@@ -2,8 +2,10 @@ class SignupRequiredError extends Error {
   constructor() { super('signup_required'); this.name = 'SignupRequiredError'; }
 }
 
+const API_BASE = import.meta.env.VITE_API_URL ?? '';
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(path, { credentials: 'include', headers: { 'Content-Type': 'application/json' }, ...options });
+  const res = await fetch(`${API_BASE}${path}`, { credentials: 'include', headers: { 'Content-Type': 'application/json' }, ...options });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     if (body.reason === 'signup_required') throw new SignupRequiredError();
@@ -21,7 +23,7 @@ export const api = {
   getResult: (id: string) =>
     request<{ downloadUrl?: string; error?: string }>(`/api/jobs/${id}/result`),
   getContent: async (id: string): Promise<string | null> => {
-    const res = await fetch(`/api/jobs/${id}/content`, { credentials: 'include' });
+    const res = await fetch(`${API_BASE}/api/jobs/${id}/content`, { credentials: 'include' });
     if (!res.ok) return null;
     return res.text();
   },

@@ -115,5 +115,4 @@ module "cdn" {
   project     = var.project
   spa_bucket  = module.storage.spa_bucket_name
   spa_bucket_regional_domain = module.storage.spa_bucket_regional_domain
-  api_alb_domain = module.api.alb_dns_name
 }

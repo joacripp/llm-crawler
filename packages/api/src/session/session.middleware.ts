@@ -17,9 +17,12 @@ export class SessionMiddleware implements NestMiddleware {
       }
     }
     const { id } = await this.sessionService.createSession();
+    const isProduction = process.env.NODE_ENV === 'production';
     res.cookie('session_id', id, {
-      httpOnly: true, secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax', maxAge: 30 * 24 * 60 * 60 * 1000,
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',  // 'none' required for cross-origin cookies
+      maxAge: 30 * 24 * 60 * 60 * 1000,
     });
     (req as any).sessionId = id;
     (req as any).sessionUserId = null;
