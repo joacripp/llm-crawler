@@ -14,13 +14,20 @@ export async function handler(event: SQSEvent): Promise<void> {
   const message: JobMessage = JSON.parse(record.body);
   const { jobId, urls, visited, maxDepth = 3, maxPages = 200 } = message;
 
+  console.log(`[crawler] Starting job=${jobId} urls=${urls.length} visited=${visited?.length ?? 0} maxDepth=${maxDepth} maxPages=${maxPages}`);
+  console.log(`[crawler] Root URLs: ${urls.slice(0, 5).join(', ')}${urls.length > 5 ? '...' : ''}`);
+
   const emitter = new EventEmitter(busName);
 
   let useBrowser = false;
   if (!visited && urls.length === 1) {
+    console.log(`[crawler] Probing ${urls[0]} for SPA detection...`);
     const probeHtml = await fetchWithAxios(urls[0]);
     if (probeHtml && isSpa(probeHtml)) {
       useBrowser = true;
+      console.log(`[crawler] SPA detected — using Playwright`);
+    } else {
+      console.log(`[crawler] Server-rendered — using Cheerio`);
     }
   }
 
@@ -30,15 +37,32 @@ export async function handler(event: SQSEvent): Promise<void> {
     browser = await chromium.launch({ headless: true });
   }
 
+  let pageCount = 0;
+  let eventCount = 0;
+
   try {
     await crawl({
       urls, visited, maxDepth, maxPages,
       concurrency: useBrowser ? 3 : 5,
       useBrowser, browser,
-      onPageCrawled: async (event) => { await emitter.emitPageCrawled({ ...event, jobId }); },
-      onCompleted: async () => { await emitter.emitJobCompleted({ jobId }); },
+      onPageCrawled: async (pageEvent) => {
+        pageCount++;
+        eventCount++;
+        console.log(`[crawler] Page ${pageCount}: ${pageEvent.url} (depth=${pageEvent.depth}, newUrls=${pageEvent.newUrls.length})`);
+        await emitter.emitPageCrawled({ ...pageEvent, jobId });
+        console.log(`[crawler] Event emitted: page.crawled #${eventCount}`);
+      },
+      onCompleted: async () => {
+        console.log(`[crawler] Crawl complete — ${pageCount} pages crawled, ${eventCount} events emitted`);
+        await emitter.emitJobCompleted({ jobId });
+        console.log(`[crawler] Event emitted: job.completed`);
+      },
     });
+  } catch (err) {
+    console.error(`[crawler] Error in job=${jobId}:`, err);
+    throw err;
   } finally {
     await browser?.close();
+    console.log(`[crawler] Job ${jobId} finished. Pages: ${pageCount}, Events: ${eventCount}`);
   }
 }

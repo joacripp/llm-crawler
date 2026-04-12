@@ -3,12 +3,15 @@ import type { PageCrawledEvent } from '@llm-crawler/shared';
 import { getPrisma, publishJobUpdate, disconnectPrisma, disconnectRedis } from '@llm-crawler/shared';
 
 export async function handler(event: SQSEvent): Promise<void> {
+  console.log(`[consumer] Processing ${event.Records.length} records`);
   const prisma = getPrisma();
   try {
     for (const record of event.Records) {
       const envelope = JSON.parse(record.body);
       const detail: PageCrawledEvent = envelope.detail;
       const { jobId, url, title, description, depth, newUrls } = detail;
+
+      console.log(`[consumer] job=${jobId} url=${url} depth=${depth} newUrls=${newUrls.length}`);
 
       await prisma.$transaction(async (tx: any) => {
         await tx.page.upsert({
@@ -30,6 +33,7 @@ export async function handler(event: SQSEvent): Promise<void> {
       });
 
       const pagesFound = await prisma.page.count({ where: { jobId } });
+      console.log(`[consumer] job=${jobId} persisted. Total pages: ${pagesFound}`);
       await publishJobUpdate(jobId, { type: 'progress', pagesFound });
     }
   } finally {
