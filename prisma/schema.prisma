@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email         String?   @unique
+  passwordHash  String?   @map("password_hash")
+  oauthProvider String?   @map("oauth_provider")
+  oauthId       String?   @map("oauth_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  jobs         Job[]
+  anonSessions AnonSession[]
+  @@map("users")
+}
+
+model AnonSession {
+  id        String   @id @db.Uuid
+  userId    String?  @map("user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  user User? @relation(fields: [userId], references: [id])
+  jobs Job[]
+  @@map("anon_sessions")
+}
+
+model Job {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String?  @map("user_id") @db.Uuid
+  anonSessionId  String?  @map("anon_session_id") @db.Uuid
+  rootUrl        String   @map("root_url")
+  maxDepth       Int      @default(3) @map("max_depth")
+  maxPages       Int      @default(200) @map("max_pages")
+  status         String   @default("pending")
+  s3Key          String?  @map("s3_key")
+  invocations    Int      @default(0)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
+  user        User?        @relation(fields: [userId], references: [id])
+  anonSession AnonSession? @relation(fields: [anonSessionId], references: [id])
+  pages       Page[]
+  discoveredUrls DiscoveredUrl[]
+  @@index([status, updatedAt], map: "idx_jobs_status")
+  @@index([anonSessionId], map: "idx_jobs_anon")
+  @@index([userId], map: "idx_jobs_user")
+  @@map("jobs")
+}
+
+model Page {
+  id          Int      @id @default(autoincrement())
+  jobId       String   @map("job_id") @db.Uuid
+  url         String
+  title       String?
+  description String?
+  depth       Int?
+  crawledAt   DateTime @default(now()) @map("crawled_at")
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  @@unique([jobId, url])
+  @@index([jobId], map: "idx_pages_job")
+  @@map("pages")
+}
+
+model DiscoveredUrl {
+  id    Int    @id @default(autoincrement())
+  jobId String @map("job_id") @db.Uuid
+  url   String
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  @@unique([jobId, url])
+  @@index([jobId], map: "idx_discovered_job")
+  @@map("discovered_urls")
+}
