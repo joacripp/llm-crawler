@@ -68,7 +68,7 @@ describe('generator handler', () => {
 
   it('updates job status to completed with s3_key', async () => {
     await handler(makeSQSEvent({ jobId: 'job-1' }));
-    expect(mockUpdateJob).toHaveBeenCalledWith({ where: { id: 'job-1' }, data: { status: 'completed', s3Key: 'results/job-1/llms.txt' } });
+    expect(mockUpdateJob).toHaveBeenCalledWith({ where: { id: 'job-1' }, data: { status: 'completed', s3Key: 'results/job-1/llms.txt', pagesFound: 2 } });
   });
 
   it('publishes completion to Redis', async () => {
