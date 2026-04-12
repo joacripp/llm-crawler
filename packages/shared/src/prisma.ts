@@ -7,7 +7,10 @@ export function getPrisma(): PrismaClient {
   if (!prisma) {
     const url = process.env.DATABASE_URL;
     if (!url) throw new Error('DATABASE_URL env var is required');
-    const adapter = new PrismaPg({ connectionString: url });
+    const adapter = new PrismaPg({
+      connectionString: url,
+      ssl: { rejectUnauthorized: false },
+    });
     prisma = new PrismaClient({ adapter });
   }
   return prisma;
