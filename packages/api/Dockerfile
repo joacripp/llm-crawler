@@ -23,8 +23,6 @@ RUN npm run build --workspace=packages/api
 # --- Production stage ---
 FROM node:20-slim
 
-RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
-
 WORKDIR /app
 
 COPY --from=builder /app/package.json /app/package-lock.json ./
@@ -37,4 +35,4 @@ COPY --from=builder /app/prisma ./prisma/
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "npx prisma db push --accept-data-loss --skip-generate && node packages/api/dist/main.js"]
+CMD ["sh", "-c", "npx prisma db push --url $DATABASE_URL --accept-data-loss && node packages/api/dist/main.js"]

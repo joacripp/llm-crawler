@@ -73,17 +73,16 @@ cd packages/web && npm run dev
 
 - **Always run `npx prisma generate` after `npm install`** — the Prisma client is generated code, not committed. Build will fail with `Module '"@prisma/client"' has no exported member 'PrismaClient'` if you skip this.
 - **Schema at `prisma/schema.prisma`** — shared by all packages.
-- **Binary targets**: `native`, `debian-openssl-3.0.x` (Docker/ECS), `rhel-openssl-3.0.x` (Lambda on Amazon Linux). If you see "could not locate Query Engine for runtime X", add that runtime to `binaryTargets` in schema.prisma.
-- **Prisma v5** — we tried v7 but its adapter pattern (`@prisma/adapter-pg`) had "User was denied access" errors with RDS. Staying on v5 which reads `DATABASE_URL` env var directly.
+- **No binary targets needed** — v7 uses WASM engine, not native binaries. No OpenSSL dependency.
+- **Prisma v7** — uses WASM engine (no native binary, no OpenSSL needed). `@prisma/adapter-pg` for Postgres. Schema has no `url` in datasource — connection URL passed via adapter in code and `--url` flag for CLI. Config in `prisma/prisma.config.ts`.
 - **ECS Dockerfile runs `prisma db push` on startup** — this syncs the schema to RDS. Schema changes are applied automatically on next deploy. No separate migration step needed for dev.
 
 ### Lambda Bundling
 
 - **esbuild bundles each Lambda into a single CJS file** — see `.github/workflows/deploy.yml`.
-- **Crawler Lambda**: bundles everything (including Prisma/ioredis as dead code). No `node_modules` in zip. Externals: `@aws-sdk/*`, `playwright`.
-- **Consumer/Generator/Monitor Lambdas**: externalize `@prisma/client` and `.prisma/client` — these are copied as `node_modules/` into the zip because Prisma's native query engine binary can't be bundled by esbuild.
+- **All Lambdas use the same esbuild command** — everything bundled inline. Only `@aws-sdk/*` (provided by Lambda runtime) and `playwright` are externalized.
 - **CJS format, not ESM** — ioredis uses `require("events")` which breaks in ESM bundles. All Lambdas use `--format=cjs`.
-- If you add a new dependency to a Lambda, make sure esbuild can bundle it. Native modules (like Prisma) need special handling.
+- **Prisma v7 WASM engine bundles cleanly** — no native binaries, no special handling needed.
 
 ### Playwright / SPA Support
 
@@ -139,4 +138,4 @@ cd packages/web && npm run dev
 - Phase plans: `docs/superpowers/plans/`
 - Benchmark data: `docs/benchmark_cheerio_vs_playwright.md`
 
-Note: the spec reflects the original design. The code has diverged in some areas (Prisma v5, no Playwright in Lambda, content proxy). The code is the source of truth.
+Note: the spec reflects the original design. The code has diverged in some areas (no Playwright in Lambda, content proxy). The code is the source of truth.
