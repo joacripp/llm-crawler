@@ -12,7 +12,7 @@ resource "aws_db_instance" "main" {
   storage_encrypted    = true
   db_name              = "llmcrawler"
   username             = "llmcrawler"
-  manage_master_user_password = true
+  password             = var.db_password
   multi_az             = var.environment == "prod"
   db_subnet_group_name = aws_db_subnet_group.main.name
   vpc_security_group_ids = [var.db_security_group_id]

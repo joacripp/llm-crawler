@@ -21,3 +21,9 @@ variable "jwt_secret" {
   type        = string
   sensitive   = true
 }
+
+variable "db_password" {
+  description = "RDS master password"
+  type        = string
+  sensitive   = true
+}

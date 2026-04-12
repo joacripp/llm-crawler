@@ -42,6 +42,7 @@ module "database" {
   vpc_id            = module.networking.vpc_id
   private_subnet_ids = module.networking.private_subnet_ids
   db_security_group_id = module.networking.db_security_group_id
+  db_password       = var.db_password
 }
 
 module "redis" {
