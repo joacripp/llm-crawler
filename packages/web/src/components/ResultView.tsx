@@ -9,16 +9,28 @@ interface ResultViewProps {
 
 export default function ResultView({ jobId, pagesFound, rootUrl }: ResultViewProps) {
   const [copied, setCopied] = useState(false);
-  const [downloadUrl, setDownloadUrl] = useState<string>();
   const [llmsTxt, setLlmsTxt] = useState<string>();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>();
 
   useEffect(() => {
-    api.getResult(jobId).then((r) => {
+    api.getResult(jobId).then(async (r) => {
       if (r.downloadUrl) {
-        setDownloadUrl(r.downloadUrl);
-        fetch(r.downloadUrl).then((res) => res.text()).then(setLlmsTxt).catch(() => {});
+        try {
+          const res = await fetch(r.downloadUrl);
+          if (!res.ok) throw new Error(`S3 fetch failed: ${res.status}`);
+          const text = await res.text();
+          setLlmsTxt(text);
+        } catch (err) {
+          console.error('Failed to fetch llms.txt from S3:', err);
+          setError('Failed to load result. The presigned URL may have expired.');
+        }
+      } else {
+        setError(r.error ?? 'Result not available yet');
       }
+    }).catch((err) => {
+      console.error('Failed to get result URL:', err);
+      setError('Failed to load result');
     }).finally(() => setLoading(false));
   }, [jobId]);
 
@@ -69,6 +81,10 @@ export default function ResultView({ jobId, pagesFound, rootUrl }: ResultViewPro
           </button>
         </div>
       </div>
+
+      {error && (
+        <p className="text-sm text-red-500">{error}</p>
+      )}
 
       {llmsTxt && (
         <textarea
