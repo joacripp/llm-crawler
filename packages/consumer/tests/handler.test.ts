@@ -52,6 +52,6 @@ describe('consumer handler', () => {
 
   it('publishes progress to Redis', async () => {
     await handler(makeSQSEvent({ jobId: 'job-1', url: 'https://example.com/', title: 'Home', description: '', depth: 0, newUrls: [] }));
-    expect(publishJobUpdate).toHaveBeenCalledWith('job-1', { type: 'progress', pagesFound: 42 });
+    expect(publishJobUpdate).toHaveBeenCalledWith('job-1', { type: 'progress', pagesFound: 42, url: 'https://example.com/' });
   });
 });
