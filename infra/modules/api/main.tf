@@ -12,7 +12,11 @@ resource "aws_iam_role" "ecs_task_execution" {
   name = "${var.project}-${var.environment}-ecs-execution"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{ Action = "sts:AssumeRole"; Effect = "Allow"; Principal = { Service = "ecs-tasks.amazonaws.com" } }]
+    Statement = [{
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
+      Principal = { Service = "ecs-tasks.amazonaws.com" }
+    }]
   })
 }
 
@@ -25,7 +29,11 @@ resource "aws_iam_role" "ecs_task" {
   name = "${var.project}-${var.environment}-ecs-task"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{ Action = "sts:AssumeRole"; Effect = "Allow"; Principal = { Service = "ecs-tasks.amazonaws.com" } }]
+    Statement = [{
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
+      Principal = { Service = "ecs-tasks.amazonaws.com" }
+    }]
   })
 }
 
@@ -35,8 +43,16 @@ resource "aws_iam_role_policy" "ecs_task" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
-      { Effect = "Allow"; Action = ["sqs:SendMessage"]; Resource = ["*"] },
-      { Effect = "Allow"; Action = ["s3:GetObject", "s3:PutObject"]; Resource = ["arn:aws:s3:::${var.results_bucket}/*"] },
+      {
+        Effect   = "Allow"
+        Action   = ["sqs:SendMessage"]
+        Resource = ["*"]
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["s3:GetObject", "s3:PutObject"]
+        Resource = ["arn:aws:s3:::${var.results_bucket}/*"]
+      },
     ]
   })
 }
@@ -59,14 +75,17 @@ resource "aws_ecs_task_definition" "api" {
     name      = "api"
     image     = "${aws_ecr_repository.api.repository_url}:latest"
     essential = true
-    portMappings = [{ containerPort = 3000; protocol = "tcp" }]
+    portMappings = [{
+      containerPort = 3000
+      protocol      = "tcp"
+    }]
     environment = [
-      { name = "DATABASE_URL";  value = var.database_url },
-      { name = "REDIS_URL";     value = var.redis_url },
-      { name = "JOBS_QUEUE_URL"; value = var.jobs_queue_url },
-      { name = "S3_BUCKET";     value = var.results_bucket },
-      { name = "JWT_SECRET";    value = var.jwt_secret },
-      { name = "NODE_ENV";      value = "production" },
+      { name = "DATABASE_URL",   value = var.database_url },
+      { name = "REDIS_URL",      value = var.redis_url },
+      { name = "JOBS_QUEUE_URL", value = var.jobs_queue_url },
+      { name = "S3_BUCKET",      value = var.results_bucket },
+      { name = "JWT_SECRET",     value = var.jwt_secret },
+      { name = "NODE_ENV",       value = "production" },
     ]
     logConfiguration = {
       logDriver = "awslogs"
