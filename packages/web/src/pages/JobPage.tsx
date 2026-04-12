@@ -11,6 +11,7 @@ export default function JobPage() {
   const [initialStatus, setInitialStatus] = useState<string | null>(null);
   const [initialPagesFound, setInitialPagesFound] = useState(0);
   const [rootUrl, setRootUrl] = useState<string>();
+  const [createdAt, setCreatedAt] = useState<number | null>(null);
 
   const shouldStream = initialStatus === 'running' || initialStatus === 'pending';
   const stream = useJobStream(shouldStream ? id! : null);
@@ -21,6 +22,7 @@ export default function JobPage() {
       setInitialStatus(job.status);
       setInitialPagesFound(job.pagesFound);
       setRootUrl(job.rootUrl);
+      setCreatedAt(new Date(job.createdAt).getTime());
     });
   }, [id]);
 
@@ -50,7 +52,7 @@ export default function JobPage() {
             status={stream.status}
             rootUrl={rootUrl}
             latestUrls={stream.latestUrls}
-            startedAt={stream.startedAt}
+            startedAt={createdAt}
           />
         )}
         {isComplete && id && (

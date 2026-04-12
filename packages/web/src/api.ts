@@ -16,7 +16,7 @@ export const api = {
   createJob: (data: { url: string; maxDepth?: number; maxPages?: number }) =>
     request<{ id: string }>('/api/jobs', { method: 'POST', body: JSON.stringify(data) }),
   getJob: (id: string) =>
-    request<{ id: string; status: string; pagesFound: number; rootUrl: string; s3Key?: string }>(`/api/jobs/${id}`),
+    request<{ id: string; status: string; pagesFound: number; rootUrl: string; createdAt: string; s3Key?: string }>(`/api/jobs/${id}`),
   getResult: (id: string) =>
     request<{ downloadUrl?: string; error?: string }>(`/api/jobs/${id}/result`),
   getContent: async (id: string): Promise<string | null> => {
