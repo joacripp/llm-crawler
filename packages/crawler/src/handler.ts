@@ -1,10 +1,7 @@
-// packages/crawler/src/handler.ts
 import type { SQSEvent } from 'aws-lambda';
 import type { JobMessage } from '@llm-crawler/shared';
 import { crawl } from './crawl.js';
 import { EventEmitter } from './event-emitter.js';
-import { isSpa } from './spa-detector.js';
-import { fetchWithAxios } from './fetcher.js';
 
 export async function handler(event: SQSEvent): Promise<void> {
   const busName = process.env.EVENT_BUS_NAME;
@@ -19,23 +16,11 @@ export async function handler(event: SQSEvent): Promise<void> {
 
   const emitter = new EventEmitter(busName);
 
-  let useBrowser = false;
-  if (!visited && urls.length === 1) {
-    console.log(`[crawler] Probing ${urls[0]} for SPA detection...`);
-    const probeHtml = await fetchWithAxios(urls[0]);
-    if (probeHtml && isSpa(probeHtml)) {
-      useBrowser = true;
-      console.log(`[crawler] SPA detected — using Playwright`);
-    } else {
-      console.log(`[crawler] Server-rendered — using Cheerio`);
-    }
-  }
-
-  let browser;
-  if (useBrowser) {
-    const { chromium } = await import('playwright');
-    browser = await chromium.launch({ headless: true });
-  }
+  // SPA detection disabled in Lambda — Playwright is too large (~200MB).
+  // All crawling uses Cheerio. SPA support is a future enhancement
+  // (requires Lambda Layer or container image).
+  const useBrowser = false;
+  console.log(`[crawler] Using Cheerio (Lambda mode)`);
 
   let pageCount = 0;
   let eventCount = 0;
@@ -43,8 +28,8 @@ export async function handler(event: SQSEvent): Promise<void> {
   try {
     await crawl({
       urls, visited, maxDepth, maxPages,
-      concurrency: useBrowser ? 3 : 5,
-      useBrowser, browser,
+      concurrency: 5,
+      useBrowser: false,
       onPageCrawled: async (pageEvent) => {
         pageCount++;
         eventCount++;
@@ -62,7 +47,6 @@ export async function handler(event: SQSEvent): Promise<void> {
     console.error(`[crawler] Error in job=${jobId}:`, err);
     throw err;
   } finally {
-    await browser?.close();
     console.log(`[crawler] Job ${jobId} finished. Pages: ${pageCount}, Events: ${eventCount}`);
   }
 }
