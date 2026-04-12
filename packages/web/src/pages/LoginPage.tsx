@@ -1,21 +1,25 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../api.js';
+import { useAuth } from '../context/AuthContext.js';
 import Layout from '../components/Layout.js';
 
 export default function LoginPage() {
-  const [mode, setMode] = useState<'signup' | 'login'>('login');
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const [mode, setMode] = useState<'signup' | 'login'>(params.get('mode') === 'signup' ? 'signup' : 'login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { setUser } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setError(''); setLoading(true);
     try {
-      if (mode === 'signup') await api.signup(email, password);
-      else await api.login(email, password);
+      const user = mode === 'signup' ? await api.signup(email, password) : await api.login(email, password);
+      setUser({ id: user.id, email: user.email });
       navigate('/dashboard');
     } catch (err) { setError(err instanceof Error ? err.message : 'Failed'); }
     finally { setLoading(false); }

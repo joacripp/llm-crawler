@@ -41,9 +41,12 @@ export class JobsService {
     return { ...job, pagesFound };
   }
 
-  async listJobs(userId: string) {
+  async listJobs(userId: string, anonSessionId?: string) {
     const prisma = getPrisma();
-    return prisma.job.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } });
+    const where = anonSessionId
+      ? { OR: [{ userId }, { anonSessionId }] }
+      : { userId };
+    return prisma.job.findMany({ where, orderBy: { createdAt: 'desc' } });
   }
 
   async getPresignedUrl(jobId: string): Promise<string | null> {
