@@ -81,7 +81,12 @@ jobs:
       - run: npm ci
       - run: npx prisma generate
       - run: npm run build
-      - run: npx esbuild packages/${{ matrix.lambda }}/src/index.ts --bundle --platform=node --target=node20 --format=cjs --outfile=/tmp/${{ matrix.lambda }}.js --external:@aws-sdk/* --external:playwright --external:.prisma/client --external:@prisma/client
+      - run: |
+          if [ "${{ matrix.lambda }}" = "crawler" ]; then
+            npx esbuild packages/${{ matrix.lambda }}/src/index.ts --bundle --platform=node --target=node20 --format=cjs --outfile=/tmp/${{ matrix.lambda }}.js --external:@aws-sdk/* --external:playwright
+          else
+            npx esbuild packages/${{ matrix.lambda }}/src/index.ts --bundle --platform=node --target=node20 --format=cjs --outfile=/tmp/${{ matrix.lambda }}.js --external:@aws-sdk/* --external:playwright --external:.prisma/client --external:@prisma/client
+          fi
       - run: |
           mkdir -p /tmp/lambda-${{ matrix.lambda }}
           cp /tmp/${{ matrix.lambda }}.js /tmp/lambda-${{ matrix.lambda }}/index.js
