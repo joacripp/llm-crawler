@@ -51,8 +51,9 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
       - uses: aws-actions/amazon-ecr-login@v2
       - run: |
-          docker build -t ${{ secrets.ECR_REPOSITORY_URL }}:${{ github.sha }} -f packages/api/Dockerfile .
+          docker build -t ${{ secrets.ECR_REPOSITORY_URL }}:${{ github.sha }} -t ${{ secrets.ECR_REPOSITORY_URL }}:latest -f packages/api/Dockerfile .
           docker push ${{ secrets.ECR_REPOSITORY_URL }}:${{ github.sha }}
+          docker push ${{ secrets.ECR_REPOSITORY_URL }}:latest
       - run: |
           aws ecs update-service \
             --cluster ${{ secrets.ECS_CLUSTER }} \
