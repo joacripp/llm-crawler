@@ -6,7 +6,7 @@ resource "aws_db_subnet_group" "main" {
 resource "aws_db_instance" "main" {
   identifier           = "${var.project}-${var.environment}"
   engine               = "postgres"
-  engine_version       = "16.4"
+  engine_version       = "16.13"
   instance_class       = var.environment == "prod" ? "db.t3.medium" : "db.t3.micro"
   allocated_storage    = 20
   storage_encrypted    = true

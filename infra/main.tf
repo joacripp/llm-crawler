@@ -66,11 +66,13 @@ module "queues" {
 }
 
 module "events" {
-  source                = "./modules/events"
-  environment           = var.environment
-  project               = var.project
-  crawl_pages_queue_arn = module.queues.crawl_pages_queue_arn
+  source                    = "./modules/events"
+  environment               = var.environment
+  project                   = var.project
+  crawl_pages_queue_arn     = module.queues.crawl_pages_queue_arn
+  crawl_pages_queue_url     = module.queues.crawl_pages_queue_url
   crawl_completed_queue_arn = module.queues.crawl_completed_queue_arn
+  crawl_completed_queue_url = module.queues.crawl_completed_queue_url
 }
 
 module "lambdas" {

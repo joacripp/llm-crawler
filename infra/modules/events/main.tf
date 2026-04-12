@@ -38,7 +38,7 @@ resource "aws_cloudwatch_event_target" "job_completed_to_sqs" {
 
 # Allow EventBridge to send to SQS
 resource "aws_sqs_queue_policy" "pages_allow_eventbridge" {
-  queue_url = var.crawl_pages_queue_arn
+  queue_url = var.crawl_pages_queue_url
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -53,7 +53,7 @@ resource "aws_sqs_queue_policy" "pages_allow_eventbridge" {
 }
 
 resource "aws_sqs_queue_policy" "completed_allow_eventbridge" {
-  queue_url = var.crawl_completed_queue_arn
+  queue_url = var.crawl_completed_queue_url
 
   policy = jsonencode({
     Version = "2012-10-17"
