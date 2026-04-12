@@ -31,6 +31,7 @@ export interface JobCompletedEvent {
 export interface RedisProgressMessage {
   type: 'progress';
   pagesFound: number;
+  url?: string;
 }
 
 export interface RedisCompletedMessage {

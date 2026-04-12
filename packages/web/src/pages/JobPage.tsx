@@ -9,28 +9,44 @@ import ResultView from '../components/ResultView.js';
 export default function JobPage() {
   const { id } = useParams<{ id: string }>();
   const [initialStatus, setInitialStatus] = useState<string | null>(null);
-  const [downloadUrl, setDownloadUrl] = useState<string>();
+  const [rootUrl, setRootUrl] = useState<string>();
   const stream = useJobStream(initialStatus === 'running' || initialStatus === 'pending' ? id! : null);
 
   useEffect(() => {
     if (!id) return;
     api.getJob(id).then((job) => {
       setInitialStatus(job.status);
-      if (job.status === 'completed') api.getResult(id).then((r) => { if (r.downloadUrl) setDownloadUrl(r.downloadUrl); });
+      setRootUrl(job.rootUrl);
     });
   }, [id]);
 
   const isComplete = initialStatus === 'completed' || stream.status === 'completed';
   const pagesFound = stream.pagesFound || 0;
-  const finalDownloadUrl = stream.downloadUrl ?? downloadUrl;
 
   return (
     <Layout>
       <div className="mx-auto max-w-xl">
-        <h2 className="mb-6 text-xl font-bold text-slate-900">Crawl Job</h2>
-        {!isComplete && <ProgressView pagesFound={pagesFound} status={stream.status} />}
-        {isComplete && <ResultView pagesFound={pagesFound} downloadUrl={finalDownloadUrl} />}
-        {initialStatus === 'failed' && <p className="mt-4 text-center text-sm text-red-600">This crawl job failed. Please try again.</p>}
+        {!isComplete && (
+          <ProgressView
+            pagesFound={pagesFound}
+            status={stream.status}
+            rootUrl={rootUrl}
+            latestUrls={stream.latestUrls}
+            startedAt={stream.startedAt}
+          />
+        )}
+        {isComplete && id && (
+          <ResultView
+            jobId={id}
+            pagesFound={pagesFound}
+            rootUrl={rootUrl}
+          />
+        )}
+        {initialStatus === 'failed' && (
+          <div className="mt-4 rounded-lg bg-red-50 border border-red-100 px-4 py-3 text-center">
+            <p className="text-sm text-red-600">This crawl job failed. Please try again.</p>
+          </div>
+        )}
       </div>
     </Layout>
   );

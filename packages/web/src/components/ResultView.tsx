@@ -1,43 +1,83 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { api } from '../api.js';
 
 interface ResultViewProps {
+  jobId: string;
   pagesFound: number;
-  downloadUrl?: string;
+  rootUrl?: string;
 }
 
-export default function ResultView({ pagesFound, downloadUrl }: ResultViewProps) {
+export default function ResultView({ jobId, pagesFound, rootUrl }: ResultViewProps) {
   const [copied, setCopied] = useState(false);
+  const [downloadUrl, setDownloadUrl] = useState<string>();
+  const [llmsTxt, setLlmsTxt] = useState<string>();
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.getResult(jobId).then((r) => {
+      if (r.downloadUrl) {
+        setDownloadUrl(r.downloadUrl);
+        fetch(r.downloadUrl).then((res) => res.text()).then(setLlmsTxt).catch(() => {});
+      }
+    }).finally(() => setLoading(false));
+  }, [jobId]);
 
   const handleCopy = async () => {
-    if (!downloadUrl) return;
+    if (!llmsTxt) return;
     try {
-      const res = await fetch(downloadUrl);
-      const text = await res.text();
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(llmsTxt);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {}
   };
 
+  const handleDownload = () => {
+    if (!llmsTxt) return;
+    const blob = new Blob([llmsTxt], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'llms.txt';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  if (loading) {
+    return <p className="text-sm text-slate-500 text-center py-8">Loading result...</p>;
+  }
+
   return (
     <div className="space-y-4">
+      {rootUrl && (
+        <div className="rounded-lg bg-green-50 px-4 py-3 border border-green-100">
+          <p className="text-xs font-medium text-green-600 uppercase tracking-wide">Completed</p>
+          <p className="mt-0.5 text-sm font-medium text-green-800 truncate">{rootUrl}</p>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <p className="text-sm text-slate-600">
-          <span className="font-semibold text-green-600">{pagesFound} pages</span> crawled
+          <span className="font-semibold text-green-600">{pagesFound} sub-pages</span> crawled
         </p>
         <div className="flex gap-2">
-          <button onClick={handleCopy}
-            className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+          <button onClick={handleCopy} disabled={!llmsTxt}
+            className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40">
             {copied ? 'Copied!' : 'Copy'}
           </button>
-          {downloadUrl && (
-            <a href={downloadUrl} download="llms.txt"
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">
-              Download
-            </a>
-          )}
+          <button onClick={handleDownload} disabled={!llmsTxt}
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-40">
+            Download
+          </button>
         </div>
       </div>
+
+      {llmsTxt && (
+        <textarea
+          readOnly
+          value={llmsTxt}
+          className="w-full h-80 rounded-lg border border-slate-200 bg-slate-50 p-4 font-mono text-xs text-slate-700 resize-y focus:outline-none focus:border-indigo-300"
+          spellCheck={false}
+        />
+      )}
     </div>
   );
 }

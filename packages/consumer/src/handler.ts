@@ -34,7 +34,7 @@ export async function handler(event: SQSEvent): Promise<void> {
 
       const pagesFound = await prisma.page.count({ where: { jobId } });
       console.log(`[consumer] job=${jobId} persisted. Total pages: ${pagesFound}`);
-      await publishJobUpdate(jobId, { type: 'progress', pagesFound });
+      await publishJobUpdate(jobId, { type: 'progress', pagesFound, url });
     }
   } finally {
     await disconnectPrisma();
