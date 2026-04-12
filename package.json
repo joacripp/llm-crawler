@@ -1,0 +1,16 @@
+{
+  "name": "llm-crawler",
+  "private": true,
+  "packageManager": "npm@10.5.0",
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "build": "turbo build",
+    "test": "turbo test",
+    "lint": "turbo lint",
+    "clean": "turbo clean"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0",
+    "typescript": "^5.7.3"
+  }
+}
