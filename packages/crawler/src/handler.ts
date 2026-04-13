@@ -1,10 +1,13 @@
 import type { SQSEvent } from 'aws-lambda';
 import type { JobMessage } from '@llm-crawler/shared';
+import { createLogger } from '@llm-crawler/shared';
 import { crawl } from './crawl.js';
 import { crawlSpa } from './spa-crawler.js';
 import { EventEmitter } from './event-emitter.js';
 import { isSpa } from './spa-detector.js';
 import { fetchWithAxios } from './fetcher.js';
+
+const log = createLogger('crawler');
 
 export async function handler(event: SQSEvent): Promise<void> {
   const busName = process.env.EVENT_BUS_NAME;
@@ -14,21 +17,20 @@ export async function handler(event: SQSEvent): Promise<void> {
   const message: JobMessage = JSON.parse(record.body);
   const { jobId, urls, visited, maxDepth = 3, maxPages = 200 } = message;
 
-  console.log(`[crawler] Starting job=${jobId} urls=${urls.length} visited=${visited?.length ?? 0} maxDepth=${maxDepth} maxPages=${maxPages}`);
-  console.log(`[crawler] Root URLs: ${urls.slice(0, 5).join(', ')}${urls.length > 5 ? '...' : ''}`);
+  log.info('Starting job', { jobId, urlCount: urls.length, visitedCount: visited?.length ?? 0, maxDepth, maxPages });
+  log.info('Root URLs', { jobId, urls: urls.slice(0, 5) });
 
   const emitter = new EventEmitter(busName);
 
-  // SPA detection: probe root with Cheerio, fall back to Playwright if SPA detected
   let useBrowser = false;
   if (!visited && urls.length === 1) {
-    console.log(`[crawler] Probing ${urls[0]} for SPA detection...`);
+    log.info('Probing for SPA detection', { jobId, url: urls[0] });
     const probeHtml = await fetchWithAxios(urls[0]);
     if (probeHtml && isSpa(probeHtml)) {
       useBrowser = true;
-      console.log(`[crawler] SPA detected — using Playwright`);
+      log.info('SPA detected — using Playwright', { jobId });
     } else {
-      console.log(`[crawler] Server-rendered — using Cheerio`);
+      log.info('Server-rendered — using Cheerio', { jobId });
     }
   }
 
@@ -37,15 +39,10 @@ export async function handler(event: SQSEvent): Promise<void> {
     const { chromium } = await import('playwright-core');
     const sparticuzChromium = await import('@sparticuz/chromium');
     const execPath = await sparticuzChromium.default.executablePath();
-    console.log(`[crawler] Launching Chromium from ${execPath}`);
-    // Remove --single-process from sparticuz args — it crashes on second browser.newPage()
+    log.info('Launching Chromium', { jobId, execPath });
     const args = sparticuzChromium.default.args.filter((a: string) => a !== '--single-process');
-    browser = await chromium.launch({
-      headless: true,
-      executablePath: execPath,
-      args,
-    });
-    console.log(`[crawler] Playwright browser launched`);
+    browser = await chromium.launch({ headless: true, executablePath: execPath, args });
+    log.info('Playwright browser launched', { jobId });
   }
 
   let pageCount = 0;
@@ -54,37 +51,26 @@ export async function handler(event: SQSEvent): Promise<void> {
   const onPageCrawled = async (pageEvent: any) => {
     pageCount++;
     eventCount++;
-    console.log(`[crawler] Page ${pageCount}: ${pageEvent.url} (depth=${pageEvent.depth}, newUrls=${pageEvent.newUrls.length})`);
+    log.info('Page crawled', { jobId, page: pageCount, url: pageEvent.url, depth: pageEvent.depth, newUrls: pageEvent.newUrls.length });
     await emitter.emitPageCrawled({ ...pageEvent, jobId });
-    console.log(`[crawler] Event emitted: page.crawled #${eventCount}`);
   };
 
   const onCompleted = async () => {
-    console.log(`[crawler] Crawl complete — ${pageCount} pages crawled, ${eventCount} events emitted`);
+    log.info('Crawl complete', { jobId, pageCount, eventCount });
     await emitter.emitJobCompleted({ jobId });
-    console.log(`[crawler] Event emitted: job.completed`);
   };
 
   try {
     if (useBrowser && browser) {
-      // SPA: single-page client-side navigation
-      await crawlSpa({
-        browser, rootUrl: urls[0], maxDepth, maxPages, visited,
-        onPageCrawled, onCompleted,
-      });
+      await crawlSpa({ browser, rootUrl: urls[0], maxDepth, maxPages, visited, onPageCrawled, onCompleted });
     } else {
-      // Server-rendered: standard BFS with Cheerio
-      await crawl({
-        urls, visited, maxDepth, maxPages,
-        concurrency: 5, useBrowser: false,
-        onPageCrawled, onCompleted,
-      });
+      await crawl({ urls, visited, maxDepth, maxPages, concurrency: 5, useBrowser: false, onPageCrawled, onCompleted });
     }
   } catch (err) {
-    console.error(`[crawler] Error in job=${jobId}:`, err);
+    log.error('Crawl failed', { jobId, error: err instanceof Error ? err.message : String(err) });
     throw err;
   } finally {
     await browser?.close();
-    console.log(`[crawler] Job ${jobId} finished. Pages: ${pageCount}, Events: ${eventCount}`);
+    log.info('Job finished', { jobId, pageCount, eventCount });
   }
 }

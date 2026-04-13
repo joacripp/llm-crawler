@@ -4,3 +4,4 @@ export { normalizeUrl, isSkippableHref, isSkippableExtension, isSkippablePath } 
 export { publishJobUpdate, disconnectRedis } from './redis.js';
 export { getPrisma, disconnectPrisma } from './prisma.js';
 export { generateLlmsTxt } from './generator.js';
+export { createLogger } from './logger.js';
