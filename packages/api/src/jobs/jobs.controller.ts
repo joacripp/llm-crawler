@@ -1,6 +1,5 @@
 import { Controller, Post, Get, Param, Body, UseGuards, Req, Res, Header } from '@nestjs/common';
-import { Response } from 'express';
-import { Request } from 'express';
+import { Response, Request } from 'express';
 import { JobsService } from './jobs.service.js';
 import { CreateJobDto } from './dto/create-job.dto.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
@@ -13,11 +12,9 @@ export class JobsController {
   @Post()
   @UseGuards(OptionalAuthGuard)
   async createJob(@Body() dto: CreateJobDto, @Req() req: Request) {
-    const user = (req as any).user;
-    const sessionId = (req as any).sessionId;
     return this.jobsService.createJob({
       rootUrl: dto.url, maxDepth: dto.maxDepth, maxPages: dto.maxPages,
-      userId: user?.id, anonSessionId: user ? undefined : sessionId,
+      userId: req.user?.id, anonSessionId: req.user ? undefined : req.sessionId,
     });
   }
 
@@ -42,6 +39,7 @@ export class JobsController {
   @Get()
   @UseGuards(JwtAuthGuard)
   async listJobs(@Req() req: Request) {
-    return this.jobsService.listJobs((req as any).user.id, (req as any).sessionId);
+    // JwtAuthGuard guarantees req.user is set.
+    return this.jobsService.listJobs(req.user!.id, req.sessionId);
   }
 }

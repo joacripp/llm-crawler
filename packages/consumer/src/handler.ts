@@ -15,7 +15,7 @@ export async function handler(event: SQSEvent): Promise<void> {
 
       log.info('Persisting page', { jobId, url, depth, newUrlCount: newUrls.length });
 
-      await prisma.$transaction(async (tx: any) => {
+      await prisma.$transaction(async (tx) => {
         await tx.page.upsert({
           where: { jobId_url: { jobId, url } },
           create: { jobId, url, title, description, depth },

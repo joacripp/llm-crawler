@@ -13,14 +13,15 @@ export class AuthController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   async me(@Req() req: Request) {
-    const user = (req as any).user;
+    // JwtAuthGuard guarantees req.user is set.
+    const user = req.user!;
     return { id: user.id, email: user.email };
   }
 
   @Post('signup')
   async signup(@Body() dto: SignupDto, @Res({ passthrough: true }) res: Response) {
     const user = await this.authService.signup(dto.email, dto.password);
-    const sessionId = (res.req as any).sessionId;
+    const sessionId = res.req.sessionId;
     if (sessionId) await this.sessionService.linkToUser(sessionId, user.id);
     const tokens = this.authService.generateTokens(user);
     this.setTokenCookies(res, tokens);
@@ -31,7 +32,7 @@ export class AuthController {
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
     const user = await this.authService.validateUser(dto.email, dto.password);
     if (!user) throw new UnauthorizedException('Invalid credentials');
-    const sessionId = (res.req as any).sessionId;
+    const sessionId = res.req.sessionId;
     if (sessionId) await this.sessionService.linkToUser(sessionId, user.id);
     const tokens = this.authService.generateTokens(user);
     this.setTokenCookies(res, tokens);
