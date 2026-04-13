@@ -21,8 +21,36 @@ jobs:
       - run: npm run build
       - run: npm run test
 
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      web: ${{ steps.filter.outputs.web }}
+      api: ${{ steps.filter.outputs.api }}
+      crawler: ${{ steps.filter.outputs.crawler }}
+      lambdas: ${{ steps.filter.outputs.lambdas }}
+      infra: ${{ steps.filter.outputs.infra }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - id: filter
+        run: |
+          CHANGED=$(git diff --name-only HEAD~1 HEAD)
+          echo "Changed files:"
+          echo "$CHANGED"
+
+          # shared changes affect everything downstream
+          SHARED=$(echo "$CHANGED" | grep -c "^packages/shared/" || true)
+
+          echo "web=$( (echo "$CHANGED" | grep -q "^packages/web/" || [ "$SHARED" -gt 0 ]) && echo true || echo false )" >> $GITHUB_OUTPUT
+          echo "api=$( (echo "$CHANGED" | grep -q "^packages/api/" || echo "$CHANGED" | grep -q "^prisma/" || [ "$SHARED" -gt 0 ]) && echo true || echo false )" >> $GITHUB_OUTPUT
+          echo "crawler=$( (echo "$CHANGED" | grep -q "^packages/crawler/" || [ "$SHARED" -gt 0 ]) && echo true || echo false )" >> $GITHUB_OUTPUT
+          echo "lambdas=$( (echo "$CHANGED" | grep -q "^packages/consumer/" || echo "$CHANGED" | grep -q "^packages/generator/" || echo "$CHANGED" | grep -q "^packages/monitor/" || [ "$SHARED" -gt 0 ]) && echo true || echo false )" >> $GITHUB_OUTPUT
+          echo "infra=$( echo "$CHANGED" | grep -q "^infra/" && echo true || echo false )" >> $GITHUB_OUTPUT
+
   deploy-spa:
-    needs: test
+    needs: [test, changes]
+    if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -41,7 +69,8 @@ jobs:
       - run: aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
 
   deploy-api:
-    needs: test
+    needs: [test, changes]
+    if: needs.changes.outputs.api == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -52,7 +81,7 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
       - uses: aws-actions/amazon-ecr-login@v2
       - run: |
-          docker build -t ${{ secrets.ECR_REPOSITORY_URL }}:${{ github.sha }} -t ${{ secrets.ECR_REPOSITORY_URL }}:latest -f packages/api/Dockerfile .
+          docker build --provenance=false -t ${{ secrets.ECR_REPOSITORY_URL }}:${{ github.sha }} -t ${{ secrets.ECR_REPOSITORY_URL }}:latest -f packages/api/Dockerfile .
           docker push ${{ secrets.ECR_REPOSITORY_URL }}:${{ github.sha }}
           docker push ${{ secrets.ECR_REPOSITORY_URL }}:latest
       - run: |
@@ -62,7 +91,8 @@ jobs:
             --force-new-deployment
 
   deploy-crawler:
-    needs: test
+    needs: [test, changes]
+    if: needs.changes.outputs.crawler == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -82,7 +112,8 @@ jobs:
             --image-uri ${{ secrets.CRAWLER_ECR_URL }}:${{ github.sha }}
 
   deploy-lambdas:
-    needs: test
+    needs: [test, changes]
+    if: needs.changes.outputs.lambdas == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -112,7 +143,8 @@ jobs:
             --zip-file fileb://${{ matrix.lambda }}.zip
 
   terraform:
-    needs: test
+    needs: [test, changes]
+    if: needs.changes.outputs.infra == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
