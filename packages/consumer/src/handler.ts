@@ -28,9 +28,19 @@ export async function handler(event: SQSEvent): Promise<void> {
             update: {},
           });
         }
-        await tx.job.update({
-          where: { id: jobId },
+        // Only transition pending → running. Never clobber completed/failed:
+        // page.crawled events can arrive after the generator has already marked
+        // the job completed (different SQS queues, no ordering), and resetting
+        // to 'running' would cause the resurrection monitor to re-enqueue.
+        await tx.job.updateMany({
+          where: { id: jobId, status: 'pending' },
           data: { updatedAt: new Date(), status: 'running' },
+        });
+        // Always bump updatedAt on running jobs so the resurrection monitor
+        // sees fresh activity. Skipped for completed/failed jobs.
+        await tx.job.updateMany({
+          where: { id: jobId, status: 'running' },
+          data: { updatedAt: new Date() },
         });
       });
 

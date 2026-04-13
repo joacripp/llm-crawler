@@ -75,4 +75,20 @@ describe('generator handler', () => {
     await handler(makeSQSEvent({ jobId: 'job-1' }));
     expect(publishJobUpdate).toHaveBeenCalledWith('job-1', expect.objectContaining({ type: 'completed' }));
   });
+
+  describe('race guard: no pages persisted yet', () => {
+    it('throws (so SQS retries) instead of marking the job complete with empty data', async () => {
+      mockFindMany.mockResolvedValueOnce([]);
+      await expect(handler(makeSQSEvent({ jobId: 'job-1' }))).rejects.toThrow(/likely raced consumer/);
+    });
+
+    it('does not delete pages or mark completed when racing consumer', async () => {
+      mockFindMany.mockResolvedValueOnce([]);
+      await expect(handler(makeSQSEvent({ jobId: 'job-1' }))).rejects.toThrow();
+      expect(mockDeleteManyPages).not.toHaveBeenCalled();
+      expect(mockDeleteManyDiscovered).not.toHaveBeenCalled();
+      expect(mockUpdateJob).not.toHaveBeenCalled();
+      expect(mockPutObject).not.toHaveBeenCalled();
+    });
+  });
 });
