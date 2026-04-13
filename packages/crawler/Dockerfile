@@ -49,9 +49,9 @@ RUN npx esbuild packages/crawler/src/index.ts \
 # --- Final stage ---
 FROM base
 
-# Copy Playwright's Chromium from builder
-COPY --from=builder /root/.cache/ms-playwright /root/.cache/ms-playwright
-ENV PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright
+# Copy Playwright's Chromium to a Lambda-accessible path
+COPY --from=builder /root/.cache/ms-playwright /opt/ms-playwright
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright
 
 # Copy playwright-core module (externalized from bundle)
 COPY --from=builder /app/node_modules/playwright-core ${LAMBDA_TASK_ROOT}/node_modules/playwright-core
