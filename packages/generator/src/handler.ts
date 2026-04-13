@@ -33,7 +33,7 @@ export async function handler(event: SQSEvent): Promise<void> {
         throw new Error(`No pages found for job ${jobId} — generator likely raced consumer; SQS will retry`);
       }
 
-      const pageData: PageData[] = pages.map((p: any) => ({
+      const pageData: PageData[] = pages.map((p) => ({
         url: p.url, title: p.title ?? p.url, description: p.description ?? '', depth: p.depth ?? 0,
       }));
 

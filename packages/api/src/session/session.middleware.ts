@@ -11,8 +11,8 @@ export class SessionMiddleware implements NestMiddleware {
     if (sessionId) {
       const session = await this.sessionService.findSession(sessionId);
       if (session) {
-        (req as any).sessionId = session.id;
-        (req as any).sessionUserId = session.userId;
+        req.sessionId = session.id;
+        req.sessionUserId = session.userId;
         return next();
       }
     }
@@ -24,8 +24,8 @@ export class SessionMiddleware implements NestMiddleware {
       sameSite: isProduction ? 'none' : 'lax',  // 'none' required for cross-origin cookies
       maxAge: 30 * 24 * 60 * 60 * 1000,
     });
-    (req as any).sessionId = id;
-    (req as any).sessionUserId = null;
+    req.sessionId = id;
+    req.sessionUserId = null;
     next();
   }
 }

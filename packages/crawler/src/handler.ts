@@ -1,5 +1,5 @@
 import type { SQSEvent } from 'aws-lambda';
-import type { JobMessage } from '@llm-crawler/shared';
+import type { JobMessage, PageCrawledEvent } from '@llm-crawler/shared';
 import { createLogger } from '@llm-crawler/shared';
 import { crawl } from './crawl.js';
 import { crawlSpa } from './spa-crawler.js';
@@ -48,7 +48,7 @@ export async function handler(event: SQSEvent): Promise<void> {
   let pageCount = 0;
   let eventCount = 0;
 
-  const onPageCrawled = async (pageEvent: any) => {
+  const onPageCrawled = async (pageEvent: PageCrawledEvent) => {
     pageCount++;
     eventCount++;
     log.info('Page crawled', { jobId, page: pageCount, url: pageEvent.url, depth: pageEvent.depth, newUrls: pageEvent.newUrls.length });
