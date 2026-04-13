@@ -34,8 +34,13 @@ export async function handler(event: SQSEvent): Promise<void> {
   let browser;
   if (useBrowser) {
     const { chromium } = await import('playwright-core');
+    // Use full chromium (not headless shell) — headless shell crashes on Lambda
+    const browsersPath = process.env.PLAYWRIGHT_BROWSERS_PATH || '/opt/ms-playwright';
+    const execPath = `${browsersPath}/chromium-1217/chrome-linux/chrome`;
+    console.log(`[crawler] Launching Chromium from ${execPath}`);
     browser = await chromium.launch({
       headless: true,
+      executablePath: execPath,
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
     });
     console.log(`[crawler] Playwright browser launched`);
