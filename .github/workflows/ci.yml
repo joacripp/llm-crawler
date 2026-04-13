@@ -38,11 +38,11 @@ jobs:
           npx prisma migrate diff \
             --from-migrations ./prisma/migrations \
             --to-schema ./prisma/schema.prisma \
-            --shadow-database-url "$DATABASE_URL" \
             --exit-code
         env:
-          # Shadow DB only — prisma needs *some* connection to construct the
-          # comparison state. Postgres service container provides it.
+          # prisma.config.ts reads DATABASE_URL for both the main and shadow DB.
+          # Shadow DB is where --from-migrations applies the migrations before
+          # comparing — the Postgres service container below provides it.
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/shadow
     services:
       postgres:
@@ -50,7 +50,7 @@ jobs:
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: shadow
-        ports: ["5432:5432"]
+        ports: ['5432:5432']
         options: >-
           --health-cmd "pg_isready -U postgres"
           --health-interval 5s
