@@ -1,7 +1,9 @@
 import type { Browser, Page } from 'playwright-core';
 import type { PageCrawledEvent } from '@llm-crawler/shared';
-import { normalizeUrl } from '@llm-crawler/shared';
+import { normalizeUrl, createLogger } from '@llm-crawler/shared';
 import { extractPageData, extractLinks } from './parser.js';
+
+const log = createLogger('spa-crawler');
 
 export interface SpaCrawlConfig {
   browser: Browser;
@@ -28,7 +30,7 @@ export async function crawlSpa(config: SpaCrawlConfig): Promise<void> {
 
   try {
     // Load the root page via normal navigation
-    console.log(`[spa-crawler] Loading root: ${rootUrl}`);
+    log.info('Loading root', { rootUrl });
     await page.goto(rootUrl, { waitUntil: 'networkidle', timeout: 30_000 });
 
     // Crawl root
@@ -42,7 +44,7 @@ export async function crawlSpa(config: SpaCrawlConfig): Promise<void> {
     const rootNewUrls = rootLinks.filter((l) => !visited.has(l));
     for (const u of rootNewUrls) visited.add(u);
     await onPageCrawled({ jobId: '', ...rootData, newUrls: rootNewUrls });
-    console.log(`[spa-crawler] Root crawled: ${rootNewUrls.length} new URLs found`);
+    log.info('Root crawled', { newUrlCount: rootNewUrls.length });
 
     // BFS through sub-pages using client-side navigation
     let currentLevel = rootNewUrls.filter((u) => new URL(u).origin === origin);
@@ -55,7 +57,7 @@ export async function crawlSpa(config: SpaCrawlConfig): Promise<void> {
 
         try {
           const pathname = new URL(url).pathname;
-          console.log(`[spa-crawler] Navigating client-side to ${pathname}`);
+          log.info('Navigating client-side', { pathname });
 
           // Navigate via history API (client-side, no server roundtrip)
           await page.evaluate((path) => {
@@ -80,9 +82,9 @@ export async function crawlSpa(config: SpaCrawlConfig): Promise<void> {
 
           pageCount++;
           await onPageCrawled({ jobId: '', ...pageData, newUrls });
-          console.log(`[spa-crawler] Page ${pageCount}: ${url} (depth=${depth}, newUrls=${newUrls.length})`);
+          log.info('Page crawled', { page: pageCount, url, depth, newUrlCount: newUrls.length });
         } catch (err) {
-          console.warn(`[spa-crawler] Failed to navigate to ${url}:`, err instanceof Error ? err.message : err);
+          log.warn('Failed to navigate', { url, error: err instanceof Error ? err.message : String(err) });
         }
       }
 

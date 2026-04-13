@@ -1,9 +1,11 @@
 import type { SQSEvent } from 'aws-lambda';
 import type { PageCrawledEvent } from '@llm-crawler/shared';
-import { getPrisma, publishJobUpdate, disconnectPrisma, disconnectRedis } from '@llm-crawler/shared';
+import { getPrisma, publishJobUpdate, disconnectPrisma, disconnectRedis, createLogger } from '@llm-crawler/shared';
+
+const log = createLogger('consumer');
 
 export async function handler(event: SQSEvent): Promise<void> {
-  console.log(`[consumer] Processing ${event.Records.length} records`);
+  log.info('Processing records', { count: event.Records.length });
   const prisma = getPrisma();
   try {
     for (const record of event.Records) {
@@ -11,7 +13,7 @@ export async function handler(event: SQSEvent): Promise<void> {
       const detail: PageCrawledEvent = envelope.detail;
       const { jobId, url, title, description, depth, newUrls } = detail;
 
-      console.log(`[consumer] job=${jobId} url=${url} depth=${depth} newUrls=${newUrls.length}`);
+      log.info('Persisting page', { jobId, url, depth, newUrlCount: newUrls.length });
 
       await prisma.$transaction(async (tx: any) => {
         await tx.page.upsert({
@@ -33,7 +35,7 @@ export async function handler(event: SQSEvent): Promise<void> {
       });
 
       const pagesFound = await prisma.page.count({ where: { jobId } });
-      console.log(`[consumer] job=${jobId} persisted. Total pages: ${pagesFound}`);
+      log.info('Page persisted', { jobId, pagesFound });
       await publishJobUpdate(jobId, { type: 'progress', pagesFound, url });
     }
   } finally {
