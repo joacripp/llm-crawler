@@ -38,6 +38,19 @@ export class AuthController {
     return { id: user.id, email: user.email };
   }
 
+  @Post('refresh')
+  async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const refreshToken = req.cookies?.refresh_token;
+    if (!refreshToken) throw new UnauthorizedException('No refresh token');
+
+    const payload = this.authService.verifyRefreshToken(refreshToken);
+    if (!payload) throw new UnauthorizedException('Invalid refresh token');
+
+    const tokens = this.authService.generateTokens({ id: payload.sub, email: payload.email });
+    this.setTokenCookies(res, tokens);
+    return { id: payload.sub, email: payload.email };
+  }
+
   @Post('logout')
   async logout(@Res({ passthrough: true }) res: Response) {
     res.clearCookie('access_token'); res.clearCookie('refresh_token');
