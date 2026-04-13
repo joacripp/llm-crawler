@@ -32,17 +32,36 @@ export async function handler(): Promise<void> {
 
       if (pending.length === 0) {
         log.info('No pending URLs, triggering generator', { jobId: job.id, visitedCount: visited.length });
-        await sqs.send(new SendMessageCommand({
-          QueueUrl: completedQueueUrl,
-          MessageBody: JSON.stringify({ source: 'llm-crawler', 'detail-type': 'job.completed', detail: { jobId: job.id } }),
-        }));
+        await sqs.send(
+          new SendMessageCommand({
+            QueueUrl: completedQueueUrl,
+            MessageBody: JSON.stringify({
+              source: 'llm-crawler',
+              'detail-type': 'job.completed',
+              detail: { jobId: job.id },
+            }),
+          }),
+        );
         continue;
       }
 
-      log.info('Re-enqueueing stale job', { jobId: job.id, pendingCount: pending.length, visitedCount: visited.length, invocation: job.invocations + 1 });
-      const message: JobMessage = { jobId: job.id, urls: pending, visited, maxDepth: job.maxDepth, maxPages: job.maxPages };
+      log.info('Re-enqueueing stale job', {
+        jobId: job.id,
+        pendingCount: pending.length,
+        visitedCount: visited.length,
+        invocation: job.invocations + 1,
+      });
+      const message: JobMessage = {
+        jobId: job.id,
+        urls: pending,
+        visited,
+        maxDepth: job.maxDepth,
+        maxPages: job.maxPages,
+      };
       await sqs.send(new SendMessageCommand({ QueueUrl: queueUrl, MessageBody: JSON.stringify(message) }));
       await prisma.job.update({ where: { id: job.id }, data: { invocations: job.invocations + 1, status: 'pending' } });
     }
-  } finally { await disconnectPrisma(); }
+  } finally {
+    await disconnectPrisma();
+  }
 }

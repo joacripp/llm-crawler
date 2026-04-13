@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 
-interface JwtUser { id: string; email: string | null }
+interface JwtUser {
+  id: string;
+  email: string | null;
+}
 
 @Injectable()
 export class OptionalAuthGuard extends AuthGuard('jwt') {

@@ -1,0 +1,10 @@
+**/dist/
+**/node_modules/
+**/.turbo/
+**/coverage/
+**/*.tsbuildinfo
+package-lock.json
+infra/.terraform/
+prisma/migrations/
+public/
+TODO.md

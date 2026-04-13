@@ -26,7 +26,14 @@ describe('types', () => {
   });
 
   it('PageCrawledEvent has required fields', () => {
-    const event: PageCrawledEvent = { jobId: 'abc-123', url: 'https://example.com/about', title: 'About', description: 'About page', depth: 1, newUrls: ['https://example.com/team'] };
+    const event: PageCrawledEvent = {
+      jobId: 'abc-123',
+      url: 'https://example.com/about',
+      title: 'About',
+      description: 'About page',
+      depth: 1,
+      newUrls: ['https://example.com/team'],
+    };
     expect(event.newUrls).toHaveLength(1);
   });
 

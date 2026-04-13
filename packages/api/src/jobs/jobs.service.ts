@@ -4,7 +4,11 @@ import type { JobMessage } from '@llm-crawler/shared';
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 
 interface CreateJobOptions {
-  rootUrl: string; maxDepth?: number; maxPages?: number; userId?: string; anonSessionId?: string;
+  rootUrl: string;
+  maxDepth?: number;
+  maxPages?: number;
+  userId?: string;
+  anonSessionId?: string;
 }
 
 @Injectable()
@@ -16,7 +20,8 @@ export class JobsService {
     const { rootUrl, maxDepth = 3, maxPages = 200, userId, anonSessionId } = options;
     if (!userId && anonSessionId) {
       const existingCount = await prisma.job.count({ where: { anonSessionId } });
-      if (existingCount >= 1) throw new ForbiddenException({ reason: 'signup_required', message: 'Sign up to create more jobs' });
+      if (existingCount >= 1)
+        throw new ForbiddenException({ reason: 'signup_required', message: 'Sign up to create more jobs' });
     }
     const job = await prisma.job.create({ data: { rootUrl, maxDepth, maxPages, userId, anonSessionId } });
     const message: JobMessage = { jobId: job.id, urls: [rootUrl], maxDepth, maxPages };
@@ -34,18 +39,14 @@ export class JobsService {
 
     // For completed jobs, use the stored count (pages are deleted after completion)
     // For in-progress jobs, count from the pages table
-    const pagesFound = job.status === 'completed'
-      ? job.pagesFound
-      : await prisma.page.count({ where: { jobId } });
+    const pagesFound = job.status === 'completed' ? job.pagesFound : await prisma.page.count({ where: { jobId } });
 
     return { ...job, pagesFound };
   }
 
   async listJobs(userId: string, anonSessionId?: string) {
     const prisma = getPrisma();
-    const where = anonSessionId
-      ? { OR: [{ userId }, { anonSessionId }] }
-      : { userId };
+    const where = anonSessionId ? { OR: [{ userId }, { anonSessionId }] } : { userId };
     return prisma.job.findMany({ where, orderBy: { createdAt: 'desc' } });
   }
 
@@ -56,7 +57,9 @@ export class JobsService {
     const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
     const { S3Client, GetObjectCommand } = await import('@aws-sdk/client-s3');
     const s3 = new S3Client();
-    return getSignedUrl(s3, new GetObjectCommand({ Bucket: process.env.S3_BUCKET, Key: job.s3Key }), { expiresIn: 86400 });
+    return getSignedUrl(s3, new GetObjectCommand({ Bucket: process.env.S3_BUCKET, Key: job.s3Key }), {
+      expiresIn: 86400,
+    });
   }
 
   async getContent(jobId: string): Promise<string | null> {

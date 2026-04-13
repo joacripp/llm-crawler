@@ -13,7 +13,9 @@ process.env.REDIS_URL = 'redis://localhost:6379';
 const { publishJobUpdate, pingRedis } = await import('../src/redis.js');
 
 describe('publishJobUpdate', () => {
-  beforeEach(() => { mockPublish.mockClear(); });
+  beforeEach(() => {
+    mockPublish.mockClear();
+  });
 
   it('publishes progress to job:{jobId} channel', async () => {
     await publishJobUpdate('abc-123', { type: 'progress', pagesFound: 42 });
@@ -22,12 +24,17 @@ describe('publishJobUpdate', () => {
 
   it('publishes completion to job:{jobId} channel', async () => {
     await publishJobUpdate('abc-123', { type: 'completed', downloadUrl: 'https://s3.example.com/llms.txt' });
-    expect(mockPublish).toHaveBeenCalledWith('job:abc-123', JSON.stringify({ type: 'completed', downloadUrl: 'https://s3.example.com/llms.txt' }));
+    expect(mockPublish).toHaveBeenCalledWith(
+      'job:abc-123',
+      JSON.stringify({ type: 'completed', downloadUrl: 'https://s3.example.com/llms.txt' }),
+    );
   });
 });
 
 describe('pingRedis', () => {
-  beforeEach(() => { mockPing.mockReset(); });
+  beforeEach(() => {
+    mockPing.mockReset();
+  });
 
   it('returns true when PING returns PONG', async () => {
     mockPing.mockResolvedValue('PONG');

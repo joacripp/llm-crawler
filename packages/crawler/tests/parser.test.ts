@@ -60,15 +60,15 @@ describe('extractLinks', () => {
   });
   it('excludes mailto, anchor, and tel links', () => {
     const links = extractLinks(HTML, 'https://example.com/about');
-    expect(links.some(l => l.includes('mailto'))).toBe(false);
-    expect(links.some(l => l.includes('#section'))).toBe(false);
+    expect(links.some((l) => l.includes('mailto'))).toBe(false);
+    expect(links.some((l) => l.includes('#section'))).toBe(false);
   });
   it('excludes asset extensions', () => {
     const links = extractLinks(HTML, 'https://example.com/about');
-    expect(links.some(l => l.includes('.png'))).toBe(false);
+    expect(links.some((l) => l.includes('.png'))).toBe(false);
   });
   it('excludes skippable paths', () => {
     const links = extractLinks(HTML, 'https://example.com/about');
-    expect(links.some(l => l.includes('/api/'))).toBe(false);
+    expect(links.some((l) => l.includes('/api/'))).toBe(false);
   });
 });

@@ -8,7 +8,10 @@ import { JwtAuthGuard } from './jwt-auth.guard.js';
 
 @Controller('api/auth')
 export class AuthController {
-  constructor(private authService: AuthService, private sessionService: SessionService) {}
+  constructor(
+    private authService: AuthService,
+    private sessionService: SessionService,
+  ) {}
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
@@ -54,14 +57,25 @@ export class AuthController {
 
   @Post('logout')
   async logout(@Res({ passthrough: true }) res: Response) {
-    res.clearCookie('access_token'); res.clearCookie('refresh_token');
+    res.clearCookie('access_token');
+    res.clearCookie('refresh_token');
     return { ok: true };
   }
 
   private setTokenCookies(res: Response, tokens: { accessToken: string; refreshToken: string }) {
     const isProduction = process.env.NODE_ENV === 'production';
     const sameSite: 'none' | 'lax' = isProduction ? 'none' : 'lax';
-    res.cookie('access_token', tokens.accessToken, { httpOnly: true, secure: isProduction, sameSite, maxAge: 15 * 60 * 1000 });
-    res.cookie('refresh_token', tokens.refreshToken, { httpOnly: true, secure: isProduction, sameSite, maxAge: 7 * 24 * 60 * 60 * 1000 });
+    res.cookie('access_token', tokens.accessToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite,
+      maxAge: 15 * 60 * 1000,
+    });
+    res.cookie('refresh_token', tokens.refreshToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
   }
 }

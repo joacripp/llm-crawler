@@ -3,8 +3,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mockCrawl = vi.fn().mockImplementation(async (config) => {
   await config.onPageCrawled({
-    jobId: '', url: 'https://example.com/', title: 'Home',
-    description: '', depth: 0, newUrls: [],
+    jobId: '',
+    url: 'https://example.com/',
+    title: 'Home',
+    description: '',
+    depth: 0,
+    newUrls: [],
   });
   await config.onCompleted();
 });
@@ -56,7 +60,9 @@ describe('handler', () => {
   });
 
   it('passes visited URLs on resume', async () => {
-    await handler(makeSQSEvent({ jobId: 'abc-123', urls: ['https://example.com/docs'], visited: ['https://example.com/'] }));
+    await handler(
+      makeSQSEvent({ jobId: 'abc-123', urls: ['https://example.com/docs'], visited: ['https://example.com/'] }),
+    );
     const config = mockCrawl.mock.calls[0][0];
     expect(config.visited).toEqual(['https://example.com/']);
   });

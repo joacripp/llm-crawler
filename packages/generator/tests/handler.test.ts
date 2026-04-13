@@ -12,7 +12,7 @@ const mockDeleteManyDiscovered = vi.fn().mockResolvedValue({ count: 5 });
 const mockUpdateJob = vi.fn().mockResolvedValue({});
 
 vi.mock('@llm-crawler/shared', async (importOriginal) => {
-  const actual = await importOriginal() as any;
+  const actual = (await importOriginal()) as any;
   return {
     ...actual,
     getPrisma: vi.fn(() => ({
@@ -36,11 +36,16 @@ const { handler } = await import('../src/handler.js');
 const { publishJobUpdate } = await import('@llm-crawler/shared');
 
 function makeSQSEvent(detail: object) {
-  return { Records: [{ body: JSON.stringify({ source: 'llm-crawler', 'detail-type': 'job.completed', detail }) }] } as any;
+  return {
+    Records: [{ body: JSON.stringify({ source: 'llm-crawler', 'detail-type': 'job.completed', detail }) }],
+  } as any;
 }
 
 describe('generator handler', () => {
-  beforeEach(() => { vi.clearAllMocks(); process.env.S3_BUCKET = 'test-bucket'; });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.S3_BUCKET = 'test-bucket';
+  });
 
   it('reads rootUrl from job record', async () => {
     await handler(makeSQSEvent({ jobId: 'job-1' }));
@@ -68,7 +73,10 @@ describe('generator handler', () => {
 
   it('updates job status to completed with s3_key', async () => {
     await handler(makeSQSEvent({ jobId: 'job-1' }));
-    expect(mockUpdateJob).toHaveBeenCalledWith({ where: { id: 'job-1' }, data: { status: 'completed', s3Key: 'results/job-1/llms.txt', pagesFound: 2 } });
+    expect(mockUpdateJob).toHaveBeenCalledWith({
+      where: { id: 'job-1' },
+      data: { status: 'completed', s3Key: 'results/job-1/llms.txt', pagesFound: 2 },
+    });
   });
 
   it('publishes completion to Redis', async () => {

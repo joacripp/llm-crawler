@@ -21,7 +21,7 @@ export class SessionMiddleware implements NestMiddleware {
     res.cookie('session_id', id, {
       httpOnly: true,
       secure: isProduction,
-      sameSite: isProduction ? 'none' : 'lax',  // 'none' required for cross-origin cookies
+      sameSite: isProduction ? 'none' : 'lax', // 'none' required for cross-origin cookies
       maxAge: 30 * 24 * 60 * 60 * 1000,
     });
     req.sessionId = id;

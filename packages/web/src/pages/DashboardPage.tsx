@@ -13,8 +13,15 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) { navigate('/login'); return; }
-    api.listJobs().then(setJobs).catch(() => {}).finally(() => setLoading(false));
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    api
+      .listJobs()
+      .then(setJobs)
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, [user, authLoading]);
 
   return (
@@ -22,7 +29,11 @@ export default function DashboardPage() {
       <h2 className="mb-6 text-xl font-bold text-slate-900">Your Crawls</h2>
       {(authLoading || loading) && <p className="text-sm text-slate-500">Loading...</p>}
       {!authLoading && !loading && jobs.length === 0 && <p className="text-sm text-slate-500">No crawls yet.</p>}
-      <div className="space-y-3">{jobs.map((job) => <JobCard key={job.id} {...job} />)}</div>
+      <div className="space-y-3">
+        {jobs.map((job) => (
+          <JobCard key={job.id} {...job} />
+        ))}
+      </div>
     </Layout>
   );
 }

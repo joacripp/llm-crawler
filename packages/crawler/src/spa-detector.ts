@@ -6,9 +6,10 @@ export function isSpa(html: string): boolean {
   const $ = cheerio.load(html);
   const hasSpaRoot = $('#root, #app, #__next, #__nuxt, [data-reactroot]').length > 0;
   const hasModuleScript = $('script[type="module"]').length > 0;
-  const hasStaticNavLinks = $('a[href^="/"], a[href^="./"]').filter((_, el) => {
-    const href = $(el).attr('href') ?? '';
-    return !isSkippableExtension(href);
-  }).length > 0;
+  const hasStaticNavLinks =
+    $('a[href^="/"], a[href^="./"]').filter((_, el) => {
+      const href = $(el).attr('href') ?? '';
+      return !isSkippableExtension(href);
+    }).length > 0;
   return (hasSpaRoot || hasModuleScript) && !hasStaticNavLinks;
 }

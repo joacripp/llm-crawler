@@ -10,7 +10,9 @@ vi.mock('@llm-crawler/shared', () => ({
 vi.mock('bcrypt', () => ({
   default: {
     hash: vi.fn().mockResolvedValue('hashed_password'),
-    compare: vi.fn().mockImplementation((plain, hash) => Promise.resolve(hash === 'hashed_password' && plain === 'password123')),
+    compare: vi
+      .fn()
+      .mockImplementation((plain, hash) => Promise.resolve(hash === 'hashed_password' && plain === 'password123')),
   },
 }));
 
@@ -22,7 +24,10 @@ const { AuthService } = await import('../src/auth/auth.service.js');
 describe('AuthService', () => {
   let service: InstanceType<typeof AuthService>;
 
-  beforeEach(() => { vi.clearAllMocks(); service = new AuthService(mockJwtService as any); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new AuthService(mockJwtService as any);
+  });
 
   it('creates a user with hashed password', async () => {
     mockFindUnique.mockResolvedValue(null);

@@ -20,9 +20,18 @@ function makeRes() {
   return {
     statusCode: 200,
     sent: undefined as unknown,
-    status: vi.fn(function (this: any, code: number) { this.statusCode = code; return this; }),
-    json: vi.fn(function (this: any, body: any) { this.sent = body; return this; }),
-    send: vi.fn(function (this: any, body: any) { this.sent = body; return this; }),
+    status: vi.fn(function (this: any, code: number) {
+      this.statusCode = code;
+      return this;
+    }),
+    json: vi.fn(function (this: any, body: any) {
+      this.sent = body;
+      return this;
+    }),
+    send: vi.fn(function (this: any, body: any) {
+      this.sent = body;
+      return this;
+    }),
   };
 }
 

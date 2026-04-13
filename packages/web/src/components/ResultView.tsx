@@ -19,34 +19,40 @@ export default function ResultView({ jobId, pagesFound, rootUrl }: ResultViewPro
     let timeout: ReturnType<typeof setTimeout>;
 
     const tryFetch = () => {
-      api.getContent(jobId).then((content) => {
-        if (cancelled) return;
-        if (content) {
-          setLlmsTxt(content);
-          setStatus('ready');
-        } else if (retriesRef.current < 12) {
-          // Not ready yet — retry in 5s (up to 60s)
-          retriesRef.current++;
-          timeout = setTimeout(tryFetch, 5000);
-        } else {
-          setStatus('error');
-          setError('Result is taking longer than expected. Please refresh in a moment.');
-        }
-      }).catch((err) => {
-        if (cancelled) return;
-        if (retriesRef.current < 12) {
-          retriesRef.current++;
-          timeout = setTimeout(tryFetch, 5000);
-        } else {
-          console.error('Failed to load content:', err);
-          setStatus('error');
-          setError('Failed to load result');
-        }
-      });
+      api
+        .getContent(jobId)
+        .then((content) => {
+          if (cancelled) return;
+          if (content) {
+            setLlmsTxt(content);
+            setStatus('ready');
+          } else if (retriesRef.current < 12) {
+            // Not ready yet — retry in 5s (up to 60s)
+            retriesRef.current++;
+            timeout = setTimeout(tryFetch, 5000);
+          } else {
+            setStatus('error');
+            setError('Result is taking longer than expected. Please refresh in a moment.');
+          }
+        })
+        .catch((err) => {
+          if (cancelled) return;
+          if (retriesRef.current < 12) {
+            retriesRef.current++;
+            timeout = setTimeout(tryFetch, 5000);
+          } else {
+            console.error('Failed to load content:', err);
+            setStatus('error');
+            setError('Failed to load result');
+          }
+        });
     };
 
     tryFetch();
-    return () => { cancelled = true; clearTimeout(timeout); };
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
   }, [jobId]);
 
   const handleCopy = async () => {
@@ -94,12 +100,16 @@ export default function ResultView({ jobId, pagesFound, rootUrl }: ResultViewPro
               <span className="font-semibold text-green-600">{pagesFound} sub-pages</span> crawled
             </p>
             <div className="flex gap-2">
-              <button onClick={handleCopy}
-                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+              <button
+                onClick={handleCopy}
+                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
                 {copied ? 'Copied!' : 'Copy'}
               </button>
-              <button onClick={handleDownload}
-                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">
+              <button
+                onClick={handleDownload}
+                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+              >
                 Download
               </button>
             </div>
@@ -116,9 +126,7 @@ export default function ResultView({ jobId, pagesFound, rootUrl }: ResultViewPro
         </>
       )}
 
-      {status === 'error' && error && (
-        <p className="text-sm text-red-500 text-center py-4">{error}</p>
-      )}
+      {status === 'error' && error && <p className="text-sm text-red-500 text-center py-4">{error}</p>}
     </div>
   );
 }

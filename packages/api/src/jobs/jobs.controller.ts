@@ -13,13 +13,18 @@ export class JobsController {
   @UseGuards(OptionalAuthGuard)
   async createJob(@Body() dto: CreateJobDto, @Req() req: Request) {
     return this.jobsService.createJob({
-      rootUrl: dto.url, maxDepth: dto.maxDepth, maxPages: dto.maxPages,
-      userId: req.user?.id, anonSessionId: req.user ? undefined : req.sessionId,
+      rootUrl: dto.url,
+      maxDepth: dto.maxDepth,
+      maxPages: dto.maxPages,
+      userId: req.user?.id,
+      anonSessionId: req.user ? undefined : req.sessionId,
     });
   }
 
   @Get(':id')
-  async getJob(@Param('id') id: string) { return this.jobsService.getJob(id); }
+  async getJob(@Param('id') id: string) {
+    return this.jobsService.getJob(id);
+  }
 
   @Get(':id/result')
   async getResult(@Param('id') id: string) {
@@ -32,7 +37,10 @@ export class JobsController {
   @Header('Content-Type', 'text/plain')
   async getContent(@Param('id') id: string, @Res() res: Response) {
     const content = await this.jobsService.getContent(id);
-    if (!content) { res.status(404).json({ error: 'Result not ready' }); return; }
+    if (!content) {
+      res.status(404).json({ error: 'Result not ready' });
+      return;
+    }
     res.send(content);
   }
 

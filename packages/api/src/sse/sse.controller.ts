@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Req, Sse, MessageEvent } from '@nestjs/common';
+import { Controller, Param, Req, Sse, MessageEvent } from '@nestjs/common';
 import { Request } from 'express';
 import { Observable, Subject } from 'rxjs';
 import { SseService } from './sse.service.js';
@@ -11,7 +11,10 @@ export class SseController {
   stream(@Param('id') jobId: string, @Req() req: Request): Observable<MessageEvent> {
     const subject = new Subject<MessageEvent>();
     const callback = (message: string) => {
-      try { const data = JSON.parse(message); subject.next({ data, type: data.type }); } catch {}
+      try {
+        const data = JSON.parse(message);
+        subject.next({ data, type: data.type });
+      } catch {}
     };
     this.sseService.subscribe(jobId, callback);
 

@@ -12,18 +12,18 @@ type: project
 
 ### Full results table
 
-| Site | C pages | C time | PW pages | PW time | Speed ratio | More pages |
-|---|---|---|---|---|---|---|
-| camel.apache.org | 9,439 | 16.6min (995s) | 10,002 | 16.1min (966s) | ~1x tie | PW+ |
-| configcat.com | 1,170 | 55s | 1,170 | 117s | C 2x | = |
-| uploadcare.com | 618 | 114s | 764 | 292s | C 2.5x | PW+ |
-| printify.com | 492 | 32s | 1 | 0.15s | C (PW blocked) | C+ |
-| clerk.com | skipped (too large, stalled) | | | | | |
-| nuxt.com | 721 | 56s | 675 | 109s | C 2x | C+ |
-| mariadb.com | 10,004 | 37min (2214s) | 10,001 | 169min (10139s) | C 4.6x | = |
-| postman.com | 735 | 2.5min (152s) | 790 | 12.4min (746s) | C 5x | PW+ |
-| dreamhost.com | 3,563 | 19.3min (1160s) | 4,085 | 81min (4862s) | C 4.2x | PW+ |
-| nextiva.com | 1,591 | 2.5min (150s) | 1,596 | 30min (1798s) | C 12x | PW+ |
+| Site             | C pages                      | C time          | PW pages | PW time         | Speed ratio    | More pages |
+| ---------------- | ---------------------------- | --------------- | -------- | --------------- | -------------- | ---------- |
+| camel.apache.org | 9,439                        | 16.6min (995s)  | 10,002   | 16.1min (966s)  | ~1x tie        | PW+        |
+| configcat.com    | 1,170                        | 55s             | 1,170    | 117s            | C 2x           | =          |
+| uploadcare.com   | 618                          | 114s            | 764      | 292s            | C 2.5x         | PW+        |
+| printify.com     | 492                          | 32s             | 1        | 0.15s           | C (PW blocked) | C+         |
+| clerk.com        | skipped (too large, stalled) |                 |          |                 |                |            |
+| nuxt.com         | 721                          | 56s             | 675      | 109s            | C 2x           | C+         |
+| mariadb.com      | 10,004                       | 37min (2214s)   | 10,001   | 169min (10139s) | C 4.6x         | =          |
+| postman.com      | 735                          | 2.5min (152s)   | 790      | 12.4min (746s)  | C 5x           | PW+        |
+| dreamhost.com    | 3,563                        | 19.3min (1160s) | 4,085    | 81min (4862s)   | C 4.2x         | PW+        |
+| nextiva.com      | 1,591                        | 2.5min (150s)   | 1,596    | 30min (1798s)   | C 12x          | PW+        |
 
 ### Key findings
 
@@ -34,6 +34,7 @@ type: project
 **Bot detection:** Playwright got fully blocked on printify.com (1 page vs 492). Cheerio with a standard User-Agent was not blocked.
 
 **Memory (Node process RSS):**
+
 - Cheerio spiked on large crawls: clerk.com +379MB, mariadb.com +221MB (heavy HTML pages held in memory during parse)
 - Playwright RSS deltas appear low/negative because Chromium runs as a separate process not captured by Node's `process.memoryUsage.rss()`
 - Real Playwright memory cost is Node RSS + Chromium process (estimated 200-500MB additional)

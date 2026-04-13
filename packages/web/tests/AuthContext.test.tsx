@@ -23,7 +23,9 @@ function Probe() {
 }
 
 describe('AuthProvider', () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it('starts in loading state then resolves to user when /me succeeds', async () => {
     (api.me as any).mockResolvedValue({ id: 'u1', email: 'a@b.com' });
@@ -31,7 +33,7 @@ describe('AuthProvider', () => {
     render(
       <AuthProvider>
         <Probe />
-      </AuthProvider>
+      </AuthProvider>,
     );
 
     expect(screen.getByTestId('loading').textContent).toBe('loading');
@@ -45,7 +47,7 @@ describe('AuthProvider', () => {
     render(
       <AuthProvider>
         <Probe />
-      </AuthProvider>
+      </AuthProvider>,
     );
 
     await waitFor(() => expect(screen.getByTestId('loading').textContent).toBe('ready'));
@@ -58,11 +60,13 @@ describe('AuthProvider', () => {
     render(
       <AuthProvider>
         <Probe />
-      </AuthProvider>
+      </AuthProvider>,
     );
     await waitFor(() => expect(screen.getByTestId('loading').textContent).toBe('ready'));
 
-    act(() => { screen.getByText('set').click(); });
+    act(() => {
+      screen.getByText('set').click();
+    });
     expect(screen.getByTestId('user').textContent).toBe('manual@x.com');
   });
 });

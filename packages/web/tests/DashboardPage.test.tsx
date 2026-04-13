@@ -23,7 +23,11 @@ const { api } = await import('../src/api.js');
 const DashboardPage = (await import('../src/pages/DashboardPage.js')).default;
 
 function renderDashboard() {
-  return render(<MemoryRouter><DashboardPage /></MemoryRouter>);
+  return render(
+    <MemoryRouter>
+      <DashboardPage />
+    </MemoryRouter>,
+  );
 }
 
 describe('DashboardPage', () => {
@@ -51,7 +55,7 @@ describe('DashboardPage', () => {
     mockUser = { id: 'u1', email: 'a@b.com' };
     (api.listJobs as any).mockResolvedValue([
       { id: 'job-1', rootUrl: 'https://alpha.example', status: 'completed', createdAt: new Date().toISOString() },
-      { id: 'job-2', rootUrl: 'https://beta.example',  status: 'running',   createdAt: new Date().toISOString() },
+      { id: 'job-2', rootUrl: 'https://beta.example', status: 'running', createdAt: new Date().toISOString() },
     ]);
 
     renderDashboard();

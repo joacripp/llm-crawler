@@ -7,7 +7,10 @@ const mockQuit = vi.fn().mockResolvedValue('OK');
 
 vi.mock('ioredis', () => ({
   default: vi.fn().mockImplementation(() => ({
-    subscribe: mockSubscribe, unsubscribe: mockUnsubscribe, on: mockOn, quit: mockQuit,
+    subscribe: mockSubscribe,
+    unsubscribe: mockUnsubscribe,
+    on: mockOn,
+    quit: mockQuit,
   })),
 }));
 
@@ -16,7 +19,11 @@ const { SseService } = await import('../src/sse/sse.service.js');
 describe('SseService', () => {
   let service: InstanceType<typeof SseService>;
 
-  beforeEach(() => { vi.clearAllMocks(); process.env.REDIS_URL = 'redis://localhost:6379'; service = new SseService(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.REDIS_URL = 'redis://localhost:6379';
+    service = new SseService();
+  });
 
   it('subscribes to job channel', async () => {
     await service.subscribe('job-1', vi.fn());

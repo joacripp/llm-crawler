@@ -52,18 +52,13 @@ export async function crawl(rootUrl: string, options: CrawlOptions = {}): Promis
             if (results.length >= maxPages) return;
 
             try {
-              const html = useBrowser && browser
-                ? await fetchWithBrowser(browser, url)
-                : await fetchWithAxios(url);
+              const html = useBrowser && browser ? await fetchWithBrowser(browser, url) : await fetchWithAxios(url);
 
               if (!html) return;
 
               const $ = cheerio.load(html);
 
-              const title =
-                $('title').first().text().trim() ||
-                $('h1').first().text().trim() ||
-                url;
+              const title = $('title').first().text().trim() || $('h1').first().text().trim() || url;
 
               const description =
                 $('meta[name="description"]').attr('content')?.trim() ||
@@ -99,8 +94,8 @@ export async function crawl(rootUrl: string, options: CrawlOptions = {}): Promis
             } catch {
               // skip unreachable pages silently
             }
-          })
-        )
+          }),
+        ),
       );
 
       currentLevel = nextLevel;
@@ -165,11 +160,12 @@ function isSpa(html: string): boolean {
   const hasModuleScript = $('script[type="module"]').length > 0;
 
   // A non-SPA would have real navigation links in the static HTML
-  const hasStaticNavLinks = $('a[href^="/"], a[href^="./"]').filter((_, el) => {
-    const href = $(el).attr('href') ?? '';
-    // Exclude asset links
-    return !SKIP_EXTENSIONS.test(href);
-  }).length > 0;
+  const hasStaticNavLinks =
+    $('a[href^="/"], a[href^="./"]').filter((_, el) => {
+      const href = $(el).attr('href') ?? '';
+      // Exclude asset links
+      return !SKIP_EXTENSIONS.test(href);
+    }).length > 0;
 
   return (hasSpaRoot || hasModuleScript) && !hasStaticNavLinks;
 }
