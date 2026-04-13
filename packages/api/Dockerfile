@@ -35,4 +35,4 @@ COPY --from=builder /app/prisma ./prisma/
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "npx prisma db push --url $DATABASE_URL --accept-data-loss && node packages/api/dist/main.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node packages/api/dist/main.js"]

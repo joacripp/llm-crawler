@@ -75,7 +75,7 @@ cd packages/web && npm run dev
 - **Schema at `prisma/schema.prisma`** — shared by all packages.
 - **No binary targets needed** — v7 uses WASM engine, not native binaries. No OpenSSL dependency.
 - **Prisma v7** — uses WASM engine (no native binary, no OpenSSL needed). `@prisma/adapter-pg` for Postgres. Schema has no `url` in datasource — connection URL passed via adapter in code and `--url` flag for CLI. Config in `prisma/prisma.config.ts`.
-- **ECS Dockerfile runs `prisma db push` on startup** — this syncs the schema to RDS. Schema changes are applied automatically on next deploy. No separate migration step needed for dev.
+- **ECS Dockerfile runs `prisma migrate deploy` on startup** — applies any unapplied migrations from `prisma/migrations/` to RDS. For schema changes: edit `schema.prisma`, then run `npx prisma migrate dev --name <description>` locally to generate a new timestamped migration in `prisma/migrations/`. Commit it. Next deploy applies it automatically. CI has a `schema-drift-check` job that fails if the schema is edited without a matching migration.
 
 ### Lambda Bundling
 
@@ -113,8 +113,8 @@ cd packages/web && npm run dev
 
 ### ECS / Docker
 
-- **Dockerfile at `packages/api/Dockerfile`** — multi-stage build. Production image is `node:20-slim` + OpenSSL (needed for Prisma CLI `db push`).
-- **Startup command**: `prisma db push --accept-data-loss --skip-generate && node packages/api/dist/main.js` — syncs schema then starts NestJS.
+- **Dockerfile at `packages/api/Dockerfile`** — multi-stage build. Production image is `node:20-slim` (Prisma v7 uses WASM, no OpenSSL needed).
+- **Startup command**: `prisma migrate deploy && node packages/api/dist/main.js` — applies pending migrations then starts NestJS.
 - **Health check**: `GET /api/health` returns `{"status":"ok"}`. Excluded from session middleware (no DB call).
 - **`force-new-deployment`** — the deploy workflow pushes to ECR with `:latest` tag and forces ECS redeployment. If you push a new image manually, run `aws ecs update-service --cluster llm-crawler-dev --service llm-crawler-dev-api --force-new-deployment`.
 

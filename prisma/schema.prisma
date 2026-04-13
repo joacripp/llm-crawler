@@ -5,6 +5,10 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  // No `url` here — Prisma v7 explicitly forbids it when an adapter is in use.
+  // Connection URL is supplied two ways:
+  //   - At runtime: PrismaPg adapter in packages/shared/src/prisma.ts
+  //   - For CLI (migrate deploy/dev): `migrate.url()` in prisma/prisma.config.ts
 }
 
 model User {
