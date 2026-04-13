@@ -12,6 +12,7 @@ export default function JobPage() {
   const [initialPagesFound, setInitialPagesFound] = useState(0);
   const [rootUrl, setRootUrl] = useState<string>();
   const [createdAt, setCreatedAt] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const shouldStream = initialStatus === 'running' || initialStatus === 'pending';
   const stream = useJobStream(shouldStream ? id! : null);
@@ -23,10 +24,10 @@ export default function JobPage() {
       setInitialPagesFound(job.pagesFound);
       setRootUrl(job.rootUrl);
       setCreatedAt(new Date(job.createdAt).getTime());
-    });
+    }).finally(() => setLoading(false));
   }, [id]);
 
-  // Also poll while streaming to detect completion if SSE doesn't connect
+  // Poll while streaming to detect completion if SSE doesn't connect
   useEffect(() => {
     if (!id || !shouldStream) return;
     const interval = setInterval(() => {
@@ -41,15 +42,26 @@ export default function JobPage() {
   }, [id, shouldStream]);
 
   const isComplete = initialStatus === 'completed' || stream.status === 'completed';
+  const isFailed = initialStatus === 'failed';
   const pagesFound = stream.pagesFound || initialPagesFound;
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="mx-auto max-w-xl py-12 text-center">
+          <p className="text-sm text-slate-500">Loading job...</p>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
       <div className="mx-auto max-w-xl">
-        {!isComplete && (
+        {!isComplete && !isFailed && (
           <ProgressView
             pagesFound={pagesFound}
-            status={stream.status}
+            status={shouldStream ? stream.status : 'connecting'}
             rootUrl={rootUrl}
             latestUrls={stream.latestUrls}
             startedAt={createdAt}
@@ -62,7 +74,7 @@ export default function JobPage() {
             rootUrl={rootUrl}
           />
         )}
-        {initialStatus === 'failed' && (
+        {isFailed && (
           <div className="mt-4 rounded-lg bg-red-50 border border-red-100 px-4 py-3 text-center">
             <p className="text-sm text-red-600">This crawl job failed. Please try again.</p>
           </div>
