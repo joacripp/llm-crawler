@@ -33,16 +33,22 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - name: Detect schema drift vs migrations
+      # Two-step approach:
+      #   1. Apply migrations to a throwaway Postgres with `migrate deploy`
+      #   2. Diff that DB's live schema against prisma/schema.prisma
+      # Exit code 2 from `migrate diff --exit-code` means schema drift →
+      # someone edited schema.prisma without generating a migration.
+      - name: Apply migrations to shadow DB
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/shadow
+      - name: Detect schema drift
         run: |
           npx prisma migrate diff \
-            --from-migrations ./prisma/migrations \
+            --from-config-datasource \
             --to-schema ./prisma/schema.prisma \
             --exit-code
         env:
-          # prisma.config.ts reads DATABASE_URL for both the main and shadow DB.
-          # Shadow DB is where --from-migrations applies the migrations before
-          # comparing — the Postgres service container below provides it.
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/shadow
     services:
       postgres:
