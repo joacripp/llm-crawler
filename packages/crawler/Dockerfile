@@ -29,8 +29,9 @@ COPY packages/crawler ./packages/crawler/
 
 RUN npm ci
 
-# Install Playwright Chromium
+# Install Playwright Chromium (both full and headless shell)
 RUN npx playwright-core install chromium
+RUN npx playwright-core install chromium-headless-shell
 
 RUN npx prisma generate
 RUN npm run build --workspace=packages/shared
