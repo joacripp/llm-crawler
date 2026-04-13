@@ -159,3 +159,33 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
       - run: terraform init
       - run: terraform apply -auto-approve -var="jwt_secret=${{ secrets.JWT_SECRET }}" -var="db_password=${{ secrets.DB_PASSWORD }}"
+
+  smoke-test:
+    needs: [deploy-spa, deploy-api, deploy-crawler, deploy-lambdas, terraform]
+    # Run whenever at least one deploy succeeded. Skipped `needs` jobs report
+    # result=skipped, so we explicitly allow that and only fail on real failures.
+    if: |
+      always() &&
+      !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      contains(needs.*.result, 'success')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wait for ECS to stabilize
+        # deploy-api only pushes the image + forces redeployment; give ECS a
+        # moment to cycle tasks before we hit /api/health.
+        if: needs.deploy-api.result == 'success'
+        run: |
+          aws configure set region ${{ env.AWS_REGION }}
+          aws ecs wait services-stable \
+            --cluster ${{ secrets.ECS_CLUSTER }} \
+            --services ${{ secrets.ECS_SERVICE }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      - name: Run smoke tests
+        run: ./scripts/smoke-test.sh
+        env:
+          API_BASE: https://api.llmtxtgenerator.online
+          SPA_BASE: https://llmtxtgenerator.online
