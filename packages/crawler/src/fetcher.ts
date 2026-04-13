@@ -13,7 +13,9 @@ export async function fetchWithAxios(url: string): Promise<string | null> {
     const contentType = response.headers['content-type'] ?? '';
     if (!contentType.includes('text/html')) return null;
     return response.data;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 export async function fetchWithBrowser(browser: Browser, url: string): Promise<string | null> {
@@ -21,5 +23,9 @@ export async function fetchWithBrowser(browser: Browser, url: string): Promise<s
   try {
     await page.goto(url, { waitUntil: 'networkidle', timeout: 20_000 });
     return await page.content();
-  } catch { return null; } finally { await page.close(); }
+  } catch {
+    return null;
+  } finally {
+    await page.close();
+  }
 }

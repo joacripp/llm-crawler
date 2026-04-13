@@ -6,7 +6,10 @@ import type { PageData } from '@llm-crawler/shared';
 export function extractPageData(html: string, url: string, depth: number): PageData {
   const $ = cheerio.load(html);
   const title = $('title').first().text().trim() || $('h1').first().text().trim() || url;
-  const description = $('meta[name="description"]').attr('content')?.trim() || $('meta[property="og:description"]').attr('content')?.trim() || '';
+  const description =
+    $('meta[name="description"]').attr('content')?.trim() ||
+    $('meta[property="og:description"]').attr('content')?.trim() ||
+    '';
   return { url, title: title.replace(/\s+/g, ' ').trim(), description, depth };
 }
 

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useJobStream } from '../src/hooks/useJobStream.js';
 
@@ -65,12 +65,16 @@ describe('useJobStream', () => {
     const { result } = renderHook(() => useJobStream('abc-123'));
     const es = FakeEventSource.instances[0];
 
-    act(() => { es.emit('progress', { pagesFound: 1, url: 'https://example.com/' }); });
+    act(() => {
+      es.emit('progress', { pagesFound: 1, url: 'https://example.com/' });
+    });
     expect(result.current.status).toBe('running');
     expect(result.current.pagesFound).toBe(1);
     expect(result.current.latestUrls).toEqual(['https://example.com/']);
 
-    act(() => { es.emit('progress', { pagesFound: 2, url: 'https://example.com/about' }); });
+    act(() => {
+      es.emit('progress', { pagesFound: 2, url: 'https://example.com/about' });
+    });
     expect(result.current.pagesFound).toBe(2);
     expect(result.current.latestUrls).toEqual(['https://example.com/about', 'https://example.com/']);
   });
@@ -93,7 +97,9 @@ describe('useJobStream', () => {
     const { result } = renderHook(() => useJobStream('abc'));
     const es = FakeEventSource.instances[0];
 
-    act(() => { es.emit('completed', { pagesFound: 42 }); });
+    act(() => {
+      es.emit('completed', { pagesFound: 42 });
+    });
     expect(result.current.status).toBe('completed');
     expect(result.current.pagesFound).toBe(42);
     expect(es.readyState).toBe(FakeEventSource.CLOSED);
@@ -103,7 +109,9 @@ describe('useJobStream', () => {
     const { result } = renderHook(() => useJobStream('abc'));
     const es = FakeEventSource.instances[0];
 
-    act(() => { es.emitError(); });
+    act(() => {
+      es.emitError();
+    });
     expect(result.current.status).toBe('error');
   });
 

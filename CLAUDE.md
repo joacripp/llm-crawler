@@ -8,15 +8,15 @@ Monorepo (Turborepo + npm workspaces) with 7 packages deployed on AWS.
 
 ### Packages
 
-| Package | Runtime | Purpose |
-|---|---|---|
-| `packages/shared` | Library | Types, Prisma client, Redis pub, URL utils, llms.txt generator |
-| `packages/crawler` | Lambda | BFS crawler (Cheerio). Emits events to EventBridge |
-| `packages/consumer` | Lambda | Persists pages to Postgres, publishes progress to Redis |
-| `packages/generator` | Lambda | Builds llms.txt from pages, uploads to S3, cleans up Postgres |
-| `packages/monitor` | Lambda | Cron: detects stale jobs, re-enqueues for resurrection |
-| `packages/api` | ECS Fargate | NestJS: auth, job CRUD, SSE progress, content proxy |
-| `packages/web` | CloudFront/S3 | React SPA: Vite + Tailwind |
+| Package              | Runtime       | Purpose                                                        |
+| -------------------- | ------------- | -------------------------------------------------------------- |
+| `packages/shared`    | Library       | Types, Prisma client, Redis pub, URL utils, llms.txt generator |
+| `packages/crawler`   | Lambda        | BFS crawler (Cheerio). Emits events to EventBridge             |
+| `packages/consumer`  | Lambda        | Persists pages to Postgres, publishes progress to Redis        |
+| `packages/generator` | Lambda        | Builds llms.txt from pages, uploads to S3, cleans up Postgres  |
+| `packages/monitor`   | Lambda        | Cron: detects stale jobs, re-enqueues for resurrection         |
+| `packages/api`       | ECS Fargate   | NestJS: auth, job CRUD, SSE progress, content proxy            |
+| `packages/web`       | CloudFront/S3 | React SPA: Vite + Tailwind                                     |
 
 ### Event flow
 

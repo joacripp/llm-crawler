@@ -57,6 +57,7 @@ packages/
 ### Task 1: Shared — Redis Publish Helper
 
 **Files:**
+
 - Create: `packages/shared/src/redis.ts`
 - Modify: `packages/shared/src/types.ts` (add Redis message types)
 - Modify: `packages/shared/src/index.ts` (update barrel)
@@ -104,17 +105,14 @@ describe('publishJobUpdate', () => {
 
   it('publishes progress to job:{jobId} channel', async () => {
     await publishJobUpdate('abc-123', { type: 'progress', pagesFound: 42 });
-    expect(mockPublish).toHaveBeenCalledWith(
-      'job:abc-123',
-      JSON.stringify({ type: 'progress', pagesFound: 42 })
-    );
+    expect(mockPublish).toHaveBeenCalledWith('job:abc-123', JSON.stringify({ type: 'progress', pagesFound: 42 }));
   });
 
   it('publishes completion to job:{jobId} channel', async () => {
     await publishJobUpdate('abc-123', { type: 'completed', downloadUrl: 'https://s3.example.com/llms.txt' });
     expect(mockPublish).toHaveBeenCalledWith(
       'job:abc-123',
-      JSON.stringify({ type: 'completed', downloadUrl: 'https://s3.example.com/llms.txt' })
+      JSON.stringify({ type: 'completed', downloadUrl: 'https://s3.example.com/llms.txt' }),
     );
   });
 });
@@ -163,6 +161,7 @@ Run: `npm install --workspace=packages/shared -D @types/ioredis` (if needed — 
 - [ ] **Step 6: Update barrel export in index.ts**
 
 Add to `packages/shared/src/index.ts`:
+
 ```typescript
 export type { RedisProgressMessage, RedisCompletedMessage, RedisJobMessage } from './types.js';
 export { publishJobUpdate, disconnectRedis } from './redis.js';
@@ -184,6 +183,7 @@ git commit -m "feat(shared): Redis pub/sub helper + message types"
 ### Task 2: Shared — Prisma Client Singleton
 
 **Files:**
+
 - Create: `packages/shared/src/prisma.ts`
 - Modify: `packages/shared/src/index.ts` (update barrel)
 
@@ -221,6 +221,7 @@ export async function disconnectPrisma(): Promise<void> {
 - [ ] **Step 4: Update barrel export**
 
 Add to `packages/shared/src/index.ts`:
+
 ```typescript
 export { getPrisma, disconnectPrisma } from './prisma.js';
 ```
@@ -241,6 +242,7 @@ git commit -m "feat(shared): Prisma client singleton"
 ### Task 3: Shared — llms.txt Generator
 
 **Files:**
+
 - Create: `packages/shared/src/generator.ts`
 - Test: `packages/shared/tests/generator.test.ts`
 - Modify: `packages/shared/src/index.ts` (update barrel)
@@ -297,9 +299,7 @@ describe('generateLlmsTxt', () => {
   });
 
   it('extracts site title from separator patterns', () => {
-    const pages: PageData[] = [
-      { url: 'https://example.com/', title: 'Home | My Brand', description: '', depth: 0 },
-    ];
+    const pages: PageData[] = [{ url: 'https://example.com/', title: 'Home | My Brand', description: '', depth: 0 }];
     const result = generateLlmsTxt(pages, 'https://example.com');
     expect(result).toContain('# My Brand');
   });
@@ -396,13 +396,17 @@ function extractSiteTitle(rootTitle: string, hostname: string): string {
 }
 
 function capitalize(s: string): string {
-  return s.split(' ').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  return s
+    .split(' ')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
 }
 ```
 
 - [ ] **Step 4: Update barrel export**
 
 Add to `packages/shared/src/index.ts`:
+
 ```typescript
 export { generateLlmsTxt } from './generator.js';
 ```
@@ -423,6 +427,7 @@ git commit -m "feat(shared): llms.txt generator logic"
 ### Task 4: Consumer Lambda Package Scaffold
 
 **Files:**
+
 - Create: `packages/consumer/package.json`
 - Create: `packages/consumer/tsconfig.json`
 
@@ -482,6 +487,7 @@ git commit -m "scaffold: consumer Lambda package"
 ### Task 5: Consumer Lambda Handler
 
 **Files:**
+
 - Create: `packages/consumer/src/handler.ts`
 - Create: `packages/consumer/src/index.ts`
 - Test: `packages/consumer/tests/handler.test.ts`
@@ -499,18 +505,20 @@ const mockUpdateJob = vi.fn().mockResolvedValue({ id: 'job-1' });
 const mockCountPages = vi.fn().mockResolvedValue(42);
 
 vi.mock('@llm-crawler/shared', async (importOriginal) => {
-  const actual = await importOriginal() as any;
+  const actual = (await importOriginal()) as any;
   return {
     ...actual,
     getPrisma: vi.fn(() => ({
       page: { upsert: mockUpsertPage },
       discoveredUrl: { upsert: mockUpsertDiscoveredUrl },
       job: { update: mockUpdateJob },
-      $transaction: vi.fn(async (fn) => fn({
-        page: { upsert: mockUpsertPage, count: mockCountPages },
-        discoveredUrl: { upsert: mockUpsertDiscoveredUrl },
-        job: { update: mockUpdateJob },
-      })),
+      $transaction: vi.fn(async (fn) =>
+        fn({
+          page: { upsert: mockUpsertPage, count: mockCountPages },
+          discoveredUrl: { upsert: mockUpsertDiscoveredUrl },
+          job: { update: mockUpdateJob },
+        }),
+      ),
     })),
     publishJobUpdate: vi.fn().mockResolvedValue(undefined),
     disconnectPrisma: vi.fn().mockResolvedValue(undefined),
@@ -523,13 +531,15 @@ const { publishJobUpdate } = await import('@llm-crawler/shared');
 
 function makeSQSEvent(detail: object) {
   return {
-    Records: [{
-      body: JSON.stringify({
-        source: 'llm-crawler',
-        'detail-type': 'page.crawled',
-        detail: detail,
-      }),
-    }],
+    Records: [
+      {
+        body: JSON.stringify({
+          source: 'llm-crawler',
+          'detail-type': 'page.crawled',
+          detail: detail,
+        }),
+      },
+    ],
   } as any;
 }
 
@@ -540,36 +550,58 @@ describe('consumer handler', () => {
   });
 
   it('upserts page data into Postgres', async () => {
-    await handler(makeSQSEvent({
-      jobId: 'job-1', url: 'https://example.com/about',
-      title: 'About', description: 'About page', depth: 1,
-      newUrls: [],
-    }));
+    await handler(
+      makeSQSEvent({
+        jobId: 'job-1',
+        url: 'https://example.com/about',
+        title: 'About',
+        description: 'About page',
+        depth: 1,
+        newUrls: [],
+      }),
+    );
     expect(mockUpsertPage).toHaveBeenCalled();
   });
 
   it('upserts discovered URLs', async () => {
-    await handler(makeSQSEvent({
-      jobId: 'job-1', url: 'https://example.com/',
-      title: 'Home', description: '', depth: 0,
-      newUrls: ['https://example.com/about', 'https://example.com/docs'],
-    }));
+    await handler(
+      makeSQSEvent({
+        jobId: 'job-1',
+        url: 'https://example.com/',
+        title: 'Home',
+        description: '',
+        depth: 0,
+        newUrls: ['https://example.com/about', 'https://example.com/docs'],
+      }),
+    );
     expect(mockUpsertDiscoveredUrl).toHaveBeenCalledTimes(2);
   });
 
   it('updates job.updated_at', async () => {
-    await handler(makeSQSEvent({
-      jobId: 'job-1', url: 'https://example.com/',
-      title: 'Home', description: '', depth: 0, newUrls: [],
-    }));
+    await handler(
+      makeSQSEvent({
+        jobId: 'job-1',
+        url: 'https://example.com/',
+        title: 'Home',
+        description: '',
+        depth: 0,
+        newUrls: [],
+      }),
+    );
     expect(mockUpdateJob).toHaveBeenCalled();
   });
 
   it('publishes progress to Redis', async () => {
-    await handler(makeSQSEvent({
-      jobId: 'job-1', url: 'https://example.com/',
-      title: 'Home', description: '', depth: 0, newUrls: [],
-    }));
+    await handler(
+      makeSQSEvent({
+        jobId: 'job-1',
+        url: 'https://example.com/',
+        title: 'Home',
+        description: '',
+        depth: 0,
+        newUrls: [],
+      }),
+    );
     expect(publishJobUpdate).toHaveBeenCalledWith('job-1', { type: 'progress', pagesFound: 42 });
   });
 });
@@ -656,6 +688,7 @@ git commit -m "feat(consumer): Lambda handler — persist pages + discovered URL
 ### Task 6: Generator Lambda Package
 
 **Files:**
+
 - Create: `packages/generator/package.json`
 - Create: `packages/generator/tsconfig.json`
 - Create: `packages/generator/src/handler.ts`
@@ -717,7 +750,7 @@ const mockDeleteManyDiscovered = vi.fn().mockResolvedValue({ count: 5 });
 const mockUpdateJob = vi.fn().mockResolvedValue({});
 
 vi.mock('@llm-crawler/shared', async (importOriginal) => {
-  const actual = await importOriginal() as any;
+  const actual = (await importOriginal()) as any;
   return {
     ...actual,
     getPrisma: vi.fn(() => ({
@@ -742,9 +775,11 @@ const { publishJobUpdate } = await import('@llm-crawler/shared');
 
 function makeSQSEvent(detail: object) {
   return {
-    Records: [{
-      body: JSON.stringify({ source: 'llm-crawler', 'detail-type': 'job.completed', detail }),
-    }],
+    Records: [
+      {
+        body: JSON.stringify({ source: 'llm-crawler', 'detail-type': 'job.completed', detail }),
+      },
+    ],
   } as any;
 }
 
@@ -830,20 +865,24 @@ export async function handler(event: SQSEvent): Promise<void> {
       const s3Key = `results/${jobId}/llms.txt`;
 
       // Upload llms.txt
-      await s3.send(new PutObjectCommand({
-        Bucket: bucket,
-        Key: s3Key,
-        Body: llmsTxt,
-        ContentType: 'text/plain',
-      }));
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: bucket,
+          Key: s3Key,
+          Body: llmsTxt,
+          ContentType: 'text/plain',
+        }),
+      );
 
       // Archive pages as JSON
-      await s3.send(new PutObjectCommand({
-        Bucket: bucket,
-        Key: `results/${jobId}/pages.json`,
-        Body: JSON.stringify(pageData, null, 2),
-        ContentType: 'application/json',
-      }));
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: bucket,
+          Key: `results/${jobId}/pages.json`,
+          Body: JSON.stringify(pageData, null, 2),
+          ContentType: 'application/json',
+        }),
+      );
 
       // Update job
       await prisma.job.update({
@@ -889,6 +928,7 @@ git commit -m "feat(generator): Lambda handler — build llms.txt, S3 upload, Po
 ### Task 7: Monitor Lambda Package
 
 **Files:**
+
 - Create: `packages/monitor/package.json`
 - Create: `packages/monitor/tsconfig.json`
 - Create: `packages/monitor/src/handler.ts`
@@ -948,20 +988,21 @@ const staleJob = {
 };
 
 const mockFindManyJobs = vi.fn().mockResolvedValue([staleJob]);
-const mockFindManyPages = vi.fn().mockResolvedValue([
-  { url: 'https://example.com/' },
-  { url: 'https://example.com/about' },
-]);
-const mockFindManyDiscovered = vi.fn().mockResolvedValue([
-  { url: 'https://example.com/' },
-  { url: 'https://example.com/about' },
-  { url: 'https://example.com/docs' },
-  { url: 'https://example.com/blog' },
-]);
+const mockFindManyPages = vi
+  .fn()
+  .mockResolvedValue([{ url: 'https://example.com/' }, { url: 'https://example.com/about' }]);
+const mockFindManyDiscovered = vi
+  .fn()
+  .mockResolvedValue([
+    { url: 'https://example.com/' },
+    { url: 'https://example.com/about' },
+    { url: 'https://example.com/docs' },
+    { url: 'https://example.com/blog' },
+  ]);
 const mockUpdateJob = vi.fn().mockResolvedValue({});
 
 vi.mock('@llm-crawler/shared', async (importOriginal) => {
-  const actual = await importOriginal() as any;
+  const actual = (await importOriginal()) as any;
   return {
     ...actual,
     getPrisma: vi.fn(() => ({
@@ -991,9 +1032,11 @@ describe('monitor handler', () => {
 
   it('finds stale jobs', async () => {
     await handler();
-    expect(mockFindManyJobs).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({ status: 'running' }),
-    }));
+    expect(mockFindManyJobs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ status: 'running' }),
+      }),
+    );
   });
 
   it('computes pending URLs (discovered minus visited)', async () => {
@@ -1101,21 +1144,21 @@ export async function handler(): Promise<void> {
       });
 
       // Pending = discovered minus visited
-      const pending = discoveredRows
-        .map((r) => r.url)
-        .filter((url) => !visitedSet.has(url));
+      const pending = discoveredRows.map((r) => r.url).filter((url) => !visitedSet.has(url));
 
       if (pending.length === 0) {
         // Nothing left to crawl — trigger Generator via completed queue
         // (Don't mark completed directly — Generator handles S3 upload + cleanup)
-        await sqs.send(new SendMessageCommand({
-          QueueUrl: process.env.COMPLETED_QUEUE_URL!,
-          MessageBody: JSON.stringify({
-            source: 'llm-crawler',
-            'detail-type': 'job.completed',
-            detail: { jobId: job.id },
+        await sqs.send(
+          new SendMessageCommand({
+            QueueUrl: process.env.COMPLETED_QUEUE_URL!,
+            MessageBody: JSON.stringify({
+              source: 'llm-crawler',
+              'detail-type': 'job.completed',
+              detail: { jobId: job.id },
+            }),
           }),
-        }));
+        );
         continue;
       }
 
@@ -1131,10 +1174,12 @@ export async function handler(): Promise<void> {
       // TODO: if message > 256KB, store in S3 and pass stateS3Key instead
       // For MVP, send directly
 
-      await sqs.send(new SendMessageCommand({
-        QueueUrl: queueUrl,
-        MessageBody: JSON.stringify(message),
-      }));
+      await sqs.send(
+        new SendMessageCommand({
+          QueueUrl: queueUrl,
+          MessageBody: JSON.stringify(message),
+        }),
+      );
 
       await prisma.job.update({
         where: { id: job.id },

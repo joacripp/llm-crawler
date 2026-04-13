@@ -24,17 +24,28 @@ export class SseService implements OnModuleDestroy {
   async subscribe(jobId: string, callback: MessageCallback): Promise<void> {
     const channel = `job:${jobId}`;
     const redis = this.getSubscriber();
-    if (!this.callbacks.has(channel)) { this.callbacks.set(channel, new Set()); await redis.subscribe(channel); }
+    if (!this.callbacks.has(channel)) {
+      this.callbacks.set(channel, new Set());
+      await redis.subscribe(channel);
+    }
     this.callbacks.get(channel)!.add(callback);
   }
 
   async unsubscribe(jobId: string, callback?: MessageCallback): Promise<void> {
     const channel = `job:${jobId}`;
     const cbs = this.callbacks.get(channel);
-    if (callback && cbs) { cbs.delete(callback); if (cbs.size > 0) return; }
+    if (callback && cbs) {
+      cbs.delete(callback);
+      if (cbs.size > 0) return;
+    }
     this.callbacks.delete(channel);
     await this.getSubscriber().unsubscribe(channel);
   }
 
-  async onModuleDestroy() { if (this.subscriber) { await this.subscriber.quit(); this.subscriber = null; } }
+  async onModuleDestroy() {
+    if (this.subscriber) {
+      await this.subscriber.quit();
+      this.subscriber = null;
+    }
+  }
 }

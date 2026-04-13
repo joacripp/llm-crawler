@@ -1,7 +1,7 @@
 // packages/crawler/tests/event-emitter.test.ts
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { EventEmitter } from '../src/event-emitter.js';
-import type { PageCrawledEvent, JobCompletedEvent } from '@llm-crawler/shared';
+import type { PageCrawledEvent } from '@llm-crawler/shared';
 
 const mockSend = vi.fn().mockResolvedValue({ FailedEntryCount: 0 });
 vi.mock('@aws-sdk/client-eventbridge', () => ({
@@ -19,8 +19,12 @@ describe('EventEmitter', () => {
 
   it('emits page.crawled event', async () => {
     const event: PageCrawledEvent = {
-      jobId: 'abc', url: 'https://example.com/about', title: 'About',
-      description: 'About page', depth: 1, newUrls: ['https://example.com/team'],
+      jobId: 'abc',
+      url: 'https://example.com/about',
+      title: 'About',
+      description: 'About page',
+      depth: 1,
+      newUrls: ['https://example.com/team'],
     };
     await emitter.emitPageCrawled(event);
     expect(mockSend).toHaveBeenCalledOnce();
@@ -33,8 +37,12 @@ describe('EventEmitter', () => {
   it('splits events when newUrls exceeds 200', async () => {
     const bigUrls = Array.from({ length: 350 }, (_, i) => `https://example.com/page-${i}`);
     const event: PageCrawledEvent = {
-      jobId: 'abc', url: 'https://example.com', title: 'Home',
-      description: '', depth: 0, newUrls: bigUrls,
+      jobId: 'abc',
+      url: 'https://example.com',
+      title: 'Home',
+      description: '',
+      depth: 0,
+      newUrls: bigUrls,
     };
     await emitter.emitPageCrawled(event);
     expect(mockSend).toHaveBeenCalledTimes(2);

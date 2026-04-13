@@ -10,7 +10,10 @@ vi.mock('react-router-dom', async () => {
 });
 
 class SignupRequiredError extends Error {
-  constructor() { super('signup_required'); this.name = 'SignupRequiredError'; }
+  constructor() {
+    super('signup_required');
+    this.name = 'SignupRequiredError';
+  }
 }
 
 vi.mock('../src/api.js', () => ({
@@ -27,11 +30,17 @@ const { api } = await import('../src/api.js');
 const HomePage = (await import('../src/pages/HomePage.js')).default;
 
 function renderHome() {
-  return render(<MemoryRouter><HomePage /></MemoryRouter>);
+  return render(
+    <MemoryRouter>
+      <HomePage />
+    </MemoryRouter>,
+  );
 }
 
 describe('HomePage', () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it('submits a crawl job and navigates to the job page on success', async () => {
     (api.createJob as any).mockResolvedValue({ id: 'job-99' });
@@ -41,9 +50,13 @@ describe('HomePage', () => {
     await user.type(screen.getByPlaceholderText('https://example.com'), 'https://example.com');
     await user.click(screen.getByRole('button', { name: /generate llms\.txt/i }));
 
-    await waitFor(() => expect(api.createJob).toHaveBeenCalledWith({
-      url: 'https://example.com', maxDepth: 3, maxPages: 200,
-    }));
+    await waitFor(() =>
+      expect(api.createJob).toHaveBeenCalledWith({
+        url: 'https://example.com',
+        maxDepth: 3,
+        maxPages: 200,
+      }),
+    );
     expect(mockNavigate).toHaveBeenCalledWith('/jobs/job-99');
   });
 
@@ -99,8 +112,12 @@ describe('HomePage', () => {
 
     await user.click(screen.getByRole('button', { name: /generate llms\.txt/i }));
 
-    await waitFor(() => expect(api.createJob).toHaveBeenCalledWith({
-      url: 'https://example.com', maxDepth: 5, maxPages: 100,
-    }));
+    await waitFor(() =>
+      expect(api.createJob).toHaveBeenCalledWith({
+        url: 'https://example.com',
+        maxDepth: 5,
+        maxPages: 100,
+      }),
+    );
   });
 });

@@ -2,15 +2,21 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const staleJob = { id: 'stale-1', rootUrl: 'https://example.com', invocations: 2, maxDepth: 3, maxPages: 200 };
 const mockFindManyJobs = vi.fn().mockResolvedValue([staleJob]);
-const mockFindManyPages = vi.fn().mockResolvedValue([{ url: 'https://example.com/' }, { url: 'https://example.com/about' }]);
-const mockFindManyDiscovered = vi.fn().mockResolvedValue([
-  { url: 'https://example.com/' }, { url: 'https://example.com/about' },
-  { url: 'https://example.com/docs' }, { url: 'https://example.com/blog' },
-]);
+const mockFindManyPages = vi
+  .fn()
+  .mockResolvedValue([{ url: 'https://example.com/' }, { url: 'https://example.com/about' }]);
+const mockFindManyDiscovered = vi
+  .fn()
+  .mockResolvedValue([
+    { url: 'https://example.com/' },
+    { url: 'https://example.com/about' },
+    { url: 'https://example.com/docs' },
+    { url: 'https://example.com/blog' },
+  ]);
 const mockUpdateJob = vi.fn().mockResolvedValue({});
 
 vi.mock('@llm-crawler/shared', async (importOriginal) => {
-  const actual = await importOriginal() as any;
+  const actual = (await importOriginal()) as any;
   return {
     ...actual,
     getPrisma: vi.fn(() => ({
@@ -41,7 +47,9 @@ describe('monitor handler', () => {
 
   it('finds stale jobs', async () => {
     await handler();
-    expect(mockFindManyJobs).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ status: 'running' }) }));
+    expect(mockFindManyJobs).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ status: 'running' }) }),
+    );
   });
 
   it('computes pending URLs (discovered minus visited)', async () => {
@@ -64,7 +72,10 @@ describe('monitor handler', () => {
 
   it('increments job invocations', async () => {
     await handler();
-    expect(mockUpdateJob).toHaveBeenCalledWith({ where: { id: 'stale-1' }, data: { invocations: 3, status: 'pending' } });
+    expect(mockUpdateJob).toHaveBeenCalledWith({
+      where: { id: 'stale-1' },
+      data: { invocations: 3, status: 'pending' },
+    });
   });
 
   it('marks job as failed when max invocations exceeded', async () => {
@@ -75,7 +86,10 @@ describe('monitor handler', () => {
   });
 
   it('triggers generator when no pending URLs remain', async () => {
-    mockFindManyDiscovered.mockResolvedValueOnce([{ url: 'https://example.com/' }, { url: 'https://example.com/about' }]);
+    mockFindManyDiscovered.mockResolvedValueOnce([
+      { url: 'https://example.com/' },
+      { url: 'https://example.com/about' },
+    ]);
     await handler();
     expect(mockSendMessage).toHaveBeenCalledOnce();
     const body = JSON.parse(mockSendMessage.mock.calls[0][0].MessageBody);

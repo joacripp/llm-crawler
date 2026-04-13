@@ -51,7 +51,13 @@ export async function handler(event: SQSEvent): Promise<void> {
   const onPageCrawled = async (pageEvent: PageCrawledEvent) => {
     pageCount++;
     eventCount++;
-    log.info('Page crawled', { jobId, page: pageCount, url: pageEvent.url, depth: pageEvent.depth, newUrls: pageEvent.newUrls.length });
+    log.info('Page crawled', {
+      jobId,
+      page: pageCount,
+      url: pageEvent.url,
+      depth: pageEvent.depth,
+      newUrls: pageEvent.newUrls.length,
+    });
     await emitter.emitPageCrawled({ ...pageEvent, jobId });
   };
 

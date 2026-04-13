@@ -28,5 +28,8 @@ export async function pingRedis(): Promise<boolean> {
 }
 
 export async function disconnectRedis(): Promise<void> {
-  if (redis) { await redis.quit(); redis = null; }
+  if (redis) {
+    await redis.quit();
+    redis = null;
+  }
 }

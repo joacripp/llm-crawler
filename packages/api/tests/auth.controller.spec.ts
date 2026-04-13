@@ -17,7 +17,11 @@ const sessionService = { linkToUser: mockLinkToUser };
 
 const { AuthController } = await import('../src/auth/auth.controller.js');
 
-interface CookieCall { name: string; value: string; opts: any; }
+interface CookieCall {
+  name: string;
+  value: string;
+  opts: any;
+}
 
 function makeRes() {
   const cookies: CookieCall[] = [];
@@ -25,8 +29,12 @@ function makeRes() {
   return {
     cookies,
     cleared,
-    cookie: vi.fn((name: string, value: string, opts: any) => { cookies.push({ name, value, opts }); }),
-    clearCookie: vi.fn((name: string) => { cleared.push(name); }),
+    cookie: vi.fn((name: string, value: string, opts: any) => {
+      cookies.push({ name, value, opts });
+    }),
+    clearCookie: vi.fn((name: string) => {
+      cleared.push(name);
+    }),
     req: { sessionId: 'sess-1' },
   };
 }
@@ -56,7 +64,7 @@ describe('AuthController', () => {
       expect(mockSignup).toHaveBeenCalledWith('new@example.com', 'pw');
       expect(mockLinkToUser).toHaveBeenCalledWith('sess-1', 'user-1');
       expect(res.cookie).toHaveBeenCalledTimes(2);
-      expect(res.cookies.map(c => c.name).sort()).toEqual(['access_token', 'refresh_token']);
+      expect(res.cookies.map((c) => c.name).sort()).toEqual(['access_token', 'refresh_token']);
       expect(result).toEqual({ id: 'user-1', email: 'new@example.com' });
     });
 
@@ -84,8 +92,9 @@ describe('AuthController', () => {
     it('throws UnauthorizedException on invalid credentials', async () => {
       mockValidateUser.mockResolvedValue(null);
       const res = makeRes();
-      await expect(controller.login({ email: 'a@b.com', password: 'bad' } as any, res as any))
-        .rejects.toBeInstanceOf(UnauthorizedException);
+      await expect(controller.login({ email: 'a@b.com', password: 'bad' } as any, res as any)).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
       expect(res.cookie).not.toHaveBeenCalled();
     });
   });
@@ -131,7 +140,7 @@ describe('AuthController', () => {
       mockSignup.mockResolvedValue({ id: 'user-1', email: 'a@b.com' });
       const res = makeRes();
       await controller.signup({ email: 'a@b.com', password: 'pw' } as any, res as any);
-      const access = res.cookies.find(c => c.name === 'access_token')!;
+      const access = res.cookies.find((c) => c.name === 'access_token')!;
       expect(access.opts.sameSite).toBe('lax');
       expect(access.opts.secure).toBe(false);
       expect(access.opts.httpOnly).toBe(true);
@@ -142,7 +151,7 @@ describe('AuthController', () => {
       mockSignup.mockResolvedValue({ id: 'user-1', email: 'a@b.com' });
       const res = makeRes();
       await controller.signup({ email: 'a@b.com', password: 'pw' } as any, res as any);
-      const refresh = res.cookies.find(c => c.name === 'refresh_token')!;
+      const refresh = res.cookies.find((c) => c.name === 'refresh_token')!;
       expect(refresh.opts.sameSite).toBe('none');
       expect(refresh.opts.secure).toBe(true);
       expect(refresh.opts.maxAge).toBe(7 * 24 * 60 * 60 * 1000);

@@ -4,7 +4,9 @@ import type { PageData } from '../src/types.js';
 
 describe('generateLlmsTxt', () => {
   it('generates header from root page', () => {
-    const pages: PageData[] = [{ url: 'https://example.com/', title: 'Example Site', description: 'A great site', depth: 0 }];
+    const pages: PageData[] = [
+      { url: 'https://example.com/', title: 'Example Site', description: 'A great site', depth: 0 },
+    ];
     const result = generateLlmsTxt(pages, 'https://example.com');
     expect(result).toContain('# Example Site');
     expect(result).toContain('> A great site');

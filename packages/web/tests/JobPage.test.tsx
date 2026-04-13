@@ -20,12 +20,14 @@ function renderJob(id: string) {
       <Routes>
         <Route path="/jobs/:id" element={<JobPage />} />
       </Routes>
-    </MemoryRouter>
+    </MemoryRouter>,
   );
 }
 
 describe('JobPage', () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it('shows loading initially', () => {
     (api.getJob as any).mockReturnValue(new Promise(() => {}));
@@ -35,7 +37,10 @@ describe('JobPage', () => {
 
   it('renders progress view for a running job', async () => {
     (api.getJob as any).mockResolvedValue({
-      id: 'job-1', status: 'running', pagesFound: 5, rootUrl: 'https://example.com',
+      id: 'job-1',
+      status: 'running',
+      pagesFound: 5,
+      rootUrl: 'https://example.com',
       createdAt: new Date().toISOString(),
     });
 
@@ -47,7 +52,10 @@ describe('JobPage', () => {
 
   it('renders failed message for a failed job', async () => {
     (api.getJob as any).mockResolvedValue({
-      id: 'job-1', status: 'failed', pagesFound: 0, rootUrl: 'https://example.com',
+      id: 'job-1',
+      status: 'failed',
+      pagesFound: 0,
+      rootUrl: 'https://example.com',
       createdAt: new Date().toISOString(),
     });
 
@@ -57,7 +65,10 @@ describe('JobPage', () => {
 
   it('renders result view for a completed job', async () => {
     (api.getJob as any).mockResolvedValue({
-      id: 'job-1', status: 'completed', pagesFound: 42, rootUrl: 'https://example.com',
+      id: 'job-1',
+      status: 'completed',
+      pagesFound: 42,
+      rootUrl: 'https://example.com',
       createdAt: new Date().toISOString(),
     });
     (api.getContent as any).mockResolvedValue('# Example\n');

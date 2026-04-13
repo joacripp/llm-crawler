@@ -28,11 +28,18 @@ const { api } = await import('../src/api.js');
 const LoginPage = (await import('../src/pages/LoginPage.js')).default;
 
 function renderPage() {
-  return render(<MemoryRouter><LoginPage /></MemoryRouter>);
+  return render(
+    <MemoryRouter>
+      <LoginPage />
+    </MemoryRouter>,
+  );
 }
 
 describe('LoginPage', () => {
-  beforeEach(() => { vi.clearAllMocks(); mockSearch = ''; });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSearch = '';
+  });
 
   it('defaults to login mode', () => {
     renderPage();

@@ -84,20 +84,20 @@ A web application that automatically generates [llms.txt](https://llmstxt.org/) 
 
 ### Component Responsibilities
 
-| Component | Responsibility |
-|---|---|
-| **React SPA** | UI: URL input, progress display, results viewer, auth screens, dashboard |
-| **CloudFront** | Serves React app from S3, caches static assets at the edge |
-| **NestJS API** | Auth (JWT), job CRUD, SSE stream per job, presigned S3 URLs. Subscribes to Redis `job:{id}` channels for active SSE connections only. |
-| **SQS (jobs)** | Delivers crawl jobs to crawler Lambdas (root URL on first run, pending URLs on resume) |
-| **Lambda Crawler** | Stateful in memory: maintains visited set + pending queue. Emits `page.crawled` and `job.completed` events to EventBridge. Never reads/writes Postgres directly. |
-| **EventBridge** | Routes crawler events to per-type SQS queues |
-| **Lambda Consumer** | Triggered by `page.crawled` via SQS. Persists page data to Postgres, updates job progress, publishes to Redis `job:{id}` channel. |
-| **Lambda Generator** | Triggered by `job.completed` via SQS. Builds llms.txt from pages table, writes to S3, archives pages, cleans up Postgres, publishes completion to Redis `job:{id}` channel. |
-| **Lambda Monitor** | Cron (every 2 min), detects stale jobs via `jobs.updated_at`, queries Postgres for visited URLs, re-discovers pending URLs, re-enqueues to SQS (jobs). |
-| **Redis (ElastiCache)** | Pub/Sub per job ID. Consumer + Generator publish progress/completion. NestJS subscribes only for jobs with active SSE listeners. Fire-and-forget — no persistence needed. |
-| **Postgres (RDS)** | Source of truth: users, sessions, jobs, pages (written by consumer only) |
-| **S3** | Final llms.txt files, archived page data |
+| Component               | Responsibility                                                                                                                                                              |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **React SPA**           | UI: URL input, progress display, results viewer, auth screens, dashboard                                                                                                    |
+| **CloudFront**          | Serves React app from S3, caches static assets at the edge                                                                                                                  |
+| **NestJS API**          | Auth (JWT), job CRUD, SSE stream per job, presigned S3 URLs. Subscribes to Redis `job:{id}` channels for active SSE connections only.                                       |
+| **SQS (jobs)**          | Delivers crawl jobs to crawler Lambdas (root URL on first run, pending URLs on resume)                                                                                      |
+| **Lambda Crawler**      | Stateful in memory: maintains visited set + pending queue. Emits `page.crawled` and `job.completed` events to EventBridge. Never reads/writes Postgres directly.            |
+| **EventBridge**         | Routes crawler events to per-type SQS queues                                                                                                                                |
+| **Lambda Consumer**     | Triggered by `page.crawled` via SQS. Persists page data to Postgres, updates job progress, publishes to Redis `job:{id}` channel.                                           |
+| **Lambda Generator**    | Triggered by `job.completed` via SQS. Builds llms.txt from pages table, writes to S3, archives pages, cleans up Postgres, publishes completion to Redis `job:{id}` channel. |
+| **Lambda Monitor**      | Cron (every 2 min), detects stale jobs via `jobs.updated_at`, queries Postgres for visited URLs, re-discovers pending URLs, re-enqueues to SQS (jobs).                      |
+| **Redis (ElastiCache)** | Pub/Sub per job ID. Consumer + Generator publish progress/completion. NestJS subscribes only for jobs with active SSE listeners. Fire-and-forget — no persistence needed.   |
+| **Postgres (RDS)**      | Source of truth: users, sessions, jobs, pages (written by consumer only)                                                                                                    |
+| **S3**                  | Final llms.txt files, archived page data                                                                                                                                    |
 
 ---
 
@@ -112,12 +112,12 @@ A web application that automatically generates [llms.txt](https://llmstxt.org/) 
 
 Tested against 9 server-rendered sites at unlimited depth/pages:
 
-| Metric | Cheerio | Playwright |
-|---|---|---|
-| Avg speed | **~5x faster** | Baseline |
-| Page discovery | Equal or -5-15% | Slightly more on some sites |
-| Bot detection | Rarely blocked | Blocked on some sites (e.g. printify.com) |
-| Memory | In-process (spikes on large crawls) | Chromium separate process (200-500MB) |
+| Metric         | Cheerio                             | Playwright                                |
+| -------------- | ----------------------------------- | ----------------------------------------- |
+| Avg speed      | **~5x faster**                      | Baseline                                  |
+| Page discovery | Equal or -5-15%                     | Slightly more on some sites               |
+| Bot detection  | Rarely blocked                      | Blocked on some sites (e.g. printify.com) |
+| Memory         | In-process (spikes on large crawls) | Chromium separate process (200-500MB)     |
 
 Full benchmark data: `docs/benchmark_cheerio_vs_playwright.md`
 
@@ -136,6 +136,7 @@ isSpa = (hasSpaRoot OR hasModuleScript) AND NOT hasStaticNavLinks
 ```
 
 Where:
+
 - `hasSpaRoot`: `#root`, `#app`, `#__next`, `#__nuxt`, `[data-reactroot]`
 - `hasModuleScript`: `<script type="module">`
 - `hasStaticNavLinks`: `<a href="/">` style links (excluding asset extensions)
@@ -176,12 +177,14 @@ Crawler Lambda (stateful in memory)
 EventBridge routes events to SQS queues → Lambda consumers:
 
 **Consumer Lambda** (triggered by `page.crawled` via SQS):
+
 - Inserts page data into Postgres `pages` table (upsert on `job_id, url` to handle SQS at-least-once delivery)
 - Inserts `newUrls` into Postgres `discovered_urls` table (for resurrection — the full link frontier)
 - Updates `jobs.updated_at` (acts as implicit heartbeat)
 - Publishes to Redis: `redis.publish("job:{jobId}", { pagesFound })`
 
 **Generator Lambda** (triggered by `job.completed` via SQS):
+
 - Reads all pages from Postgres, generates llms.txt
 - Writes llms.txt + pages archive to S3
 - Cleans up Postgres (DELETE pages for job)
@@ -310,35 +313,35 @@ EventBridge is the single event bus. The crawler emits all events to EventBridge
 
 All events go to a custom event bus `llm-crawler-events`.
 
-| Event | DetailType | Producer | Payload |
-|---|---|---|---|
-| `page.crawled` | Crawler Lambda | `{ jobId, url, title, desc, depth, newUrls }` |
-| `job.completed` | Crawler Lambda | `{ jobId }` |
+| Event           | DetailType     | Producer                                      | Payload |
+| --------------- | -------------- | --------------------------------------------- | ------- |
+| `page.crawled`  | Crawler Lambda | `{ jobId, url, title, desc, depth, newUrls }` |
+| `job.completed` | Crawler Lambda | `{ jobId }`                                   |
 
 **Event size limit:** EventBridge has a 256KB max per event. If a page has >200 discovered URLs, the crawler splits `newUrls` across multiple `page.crawled` events.
 
 ### EventBridge → SQS Routing
 
-| Rule matches | Target SQS queue | Consumer |
-|---|---|---|
-| `page.crawled` | `crawl-pages` | Consumer Lambda |
+| Rule matches    | Target SQS queue  | Consumer         |
+| --------------- | ----------------- | ---------------- |
+| `page.crawled`  | `crawl-pages`     | Consumer Lambda  |
 | `job.completed` | `crawl-completed` | Generator Lambda |
 
 ### SQS Queues
 
-| Queue | Producer | Consumer | Purpose |
-|---|---|---|---|
-| `crawl-jobs` | NestJS API (new), Monitor (resume) | Crawler Lambda | Job dispatch |
-| `crawl-pages` | EventBridge rule | Consumer Lambda | Page persistence |
-| `crawl-completed` | EventBridge rule | Generator Lambda | llms.txt generation |
+| Queue             | Producer                           | Consumer         | Purpose             |
+| ----------------- | ---------------------------------- | ---------------- | ------------------- |
+| `crawl-jobs`      | NestJS API (new), Monitor (resume) | Crawler Lambda   | Job dispatch        |
+| `crawl-pages`     | EventBridge rule                   | Consumer Lambda  | Page persistence    |
+| `crawl-completed` | EventBridge rule                   | Generator Lambda | llms.txt generation |
 
 ### Redis Pub/Sub (Real-Time Progress)
 
 Consumer and Generator Lambdas publish to Redis after processing:
 
-| Channel | Publisher | Payload | Subscriber |
-|---|---|---|---|
-| `job:{jobId}` | Consumer Lambda | `{ type: "progress", pagesFound }` | NestJS (if SSE active) |
+| Channel       | Publisher        | Payload                              | Subscriber             |
+| ------------- | ---------------- | ------------------------------------ | ---------------------- |
+| `job:{jobId}` | Consumer Lambda  | `{ type: "progress", pagesFound }`   | NestJS (if SSE active) |
 | `job:{jobId}` | Generator Lambda | `{ type: "completed", downloadUrl }` | NestJS (if SSE active) |
 
 NestJS subscribes to `job:{jobId}` only when a client opens an SSE connection for that job. On SSE disconnect, it unsubscribes. If nobody is listening, Redis messages are discarded — zero cost.
@@ -368,11 +371,11 @@ Each SQS queue has a Dead Letter Queue. Messages that fail 3 times go to DLQ. Cl
 
 ### Auth Methods
 
-| Method | Implementation |
-|---|---|
-| **Email + password** | bcrypt hash, NestJS Passport local strategy |
-| **OAuth** | Passport Google/GitHub strategies, store `oauth_provider` + `oauth_id` |
-| **Magic link** | Generate signed JWT with email, send via SES, verify on click |
+| Method               | Implementation                                                         |
+| -------------------- | ---------------------------------------------------------------------- |
+| **Email + password** | bcrypt hash, NestJS Passport local strategy                            |
+| **OAuth**            | Passport Google/GitHub strategies, store `oauth_provider` + `oauth_id` |
+| **Magic link**       | Generate signed JWT with email, send via SES, verify on click          |
 
 ### Signup Gate
 
@@ -387,25 +390,25 @@ Each SQS queue has a Dead Letter Queue. Messages that fail 3 times go to DLQ. Cl
 
 ### Public
 
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/api/jobs` | Create a crawl job (anonymous or authenticated) |
-| `GET` | `/api/jobs/:id` | Get job status + progress |
-| `GET` | `/api/jobs/:id/result` | Get presigned S3 URL for llms.txt download |
+| Method | Path                   | Description                                     |
+| ------ | ---------------------- | ----------------------------------------------- |
+| `POST` | `/api/jobs`            | Create a crawl job (anonymous or authenticated) |
+| `GET`  | `/api/jobs/:id`        | Get job status + progress                       |
+| `GET`  | `/api/jobs/:id/result` | Get presigned S3 URL for llms.txt download      |
 
 ### Authenticated
 
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/api/jobs` | List user's past jobs |
-| `POST` | `/api/auth/signup` | Email + password signup |
-| `POST` | `/api/auth/login` | Email + password login |
-| `GET` | `/api/auth/google` | OAuth redirect (Google) |
-| `GET` | `/api/auth/github` | OAuth redirect (GitHub) |
+| Method | Path                   | Description              |
+| ------ | ---------------------- | ------------------------ |
+| `GET`  | `/api/jobs`            | List user's past jobs    |
+| `POST` | `/api/auth/signup`     | Email + password signup  |
+| `POST` | `/api/auth/login`      | Email + password login   |
+| `GET`  | `/api/auth/google`     | OAuth redirect (Google)  |
+| `GET`  | `/api/auth/github`     | OAuth redirect (GitHub)  |
 | `POST` | `/api/auth/magic-link` | Request magic link email |
-| `GET` | `/api/auth/verify` | Verify magic link token |
-| `POST` | `/api/auth/refresh` | Refresh access token |
-| `POST` | `/api/auth/logout` | Clear tokens |
+| `GET`  | `/api/auth/verify`     | Verify magic link token  |
+| `POST` | `/api/auth/refresh`    | Refresh access token     |
+| `POST` | `/api/auth/logout`     | Clear tokens             |
 
 ### Real-Time Progress (SSE)
 
@@ -430,12 +433,12 @@ On SSE disconnect, NestJS unsubscribes from Redis. When user reconnects (or refr
 
 ### Pages
 
-| Route | Description |
-|---|---|
-| `/` | Landing page with URL input form |
-| `/jobs/:id` | Job progress + result view |
-| `/dashboard` | Authenticated: list of past crawls |
-| `/login` | Auth page (email, OAuth, magic link) |
+| Route        | Description                          |
+| ------------ | ------------------------------------ |
+| `/`          | Landing page with URL input form     |
+| `/jobs/:id`  | Job progress + result view           |
+| `/dashboard` | Authenticated: list of past crawls   |
+| `/login`     | Auth page (email, OAuth, magic link) |
 
 ### Key Behaviors
 
@@ -500,21 +503,21 @@ llm-crawler/
 
 ### Resources
 
-| Resource | Service |
-|---|---|
-| VPC + subnets | Networking |
-| RDS Postgres | Database |
-| ECS Fargate cluster + service | NestJS API |
-| ECR repository | NestJS container image |
-| ElastiCache Redis | Pub/Sub for real-time progress to NestJS |
-| Lambda functions (4) | Crawler, Consumer, Generator, Monitor |
-| SQS queues (3) + DLQs | Job dispatch (crawl-jobs), pages (crawl-pages), completed (crawl-completed) |
-| EventBridge bus + rules | Routes crawler events to SQS queues |
-| S3 buckets (2) | Results + React app static hosting |
-| CloudFront distribution | CDN for React app |
-| ACM certificate | HTTPS |
-| IAM roles + policies | Per-service permissions |
-| CloudWatch alarms | DLQ depth, Lambda errors, ECS health |
+| Resource                      | Service                                                                     |
+| ----------------------------- | --------------------------------------------------------------------------- |
+| VPC + subnets                 | Networking                                                                  |
+| RDS Postgres                  | Database                                                                    |
+| ECS Fargate cluster + service | NestJS API                                                                  |
+| ECR repository                | NestJS container image                                                      |
+| ElastiCache Redis             | Pub/Sub for real-time progress to NestJS                                    |
+| Lambda functions (4)          | Crawler, Consumer, Generator, Monitor                                       |
+| SQS queues (3) + DLQs         | Job dispatch (crawl-jobs), pages (crawl-pages), completed (crawl-completed) |
+| EventBridge bus + rules       | Routes crawler events to SQS queues                                         |
+| S3 buckets (2)                | Results + React app static hosting                                          |
+| CloudFront distribution       | CDN for React app                                                           |
+| ACM certificate               | HTTPS                                                                       |
+| IAM roles + policies          | Per-service permissions                                                     |
+| CloudWatch alarms             | DLQ depth, Lambda errors, ECS health                                        |
 
 ### Environments
 
@@ -528,11 +531,13 @@ llm-crawler/
 ### Pipelines
 
 **On pull request:**
+
 - Lint + type check
 - Unit tests
 - `terraform plan` (diff shown in PR comment)
 
 **On merge to main:**
+
 - Build React app → upload to S3, invalidate CloudFront
 - Build NestJS container → push to ECR, update ECS service
 - Package Lambda functions → update Lambda code

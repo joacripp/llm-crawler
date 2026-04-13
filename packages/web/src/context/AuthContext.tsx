@@ -1,7 +1,10 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { api } from '../api.js';
 
-interface AuthUser { id: string; email: string; }
+interface AuthUser {
+  id: string;
+  email: string;
+}
 interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
@@ -15,10 +18,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.me().then(setUser).catch(() => setUser(null)).finally(() => setLoading(false));
+    api
+      .me()
+      .then(setUser)
+      .catch(() => setUser(null))
+      .finally(() => setLoading(false));
   }, []);
 
   return <AuthContext.Provider value={{ user, loading, setUser }}>{children}</AuthContext.Provider>;
 }
 
-export function useAuth() { return useContext(AuthContext); }
+export function useAuth() {
+  return useContext(AuthContext);
+}

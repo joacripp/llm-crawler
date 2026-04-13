@@ -31,13 +31,15 @@ export class EventEmitter {
   private async putEvent(detailType: string, detail: object): Promise<void> {
     await this.client.send(
       new PutEventsCommand({
-        Entries: [{
-          Source: 'llm-crawler',
-          DetailType: detailType,
-          Detail: JSON.stringify(detail),
-          EventBusName: this.busName,
-        }],
-      })
+        Entries: [
+          {
+            Source: 'llm-crawler',
+            DetailType: detailType,
+            Detail: JSON.stringify(detail),
+            EventBusName: this.busName,
+          },
+        ],
+      }),
     );
   }
 }

@@ -1,4 +1,4 @@
-import type { Browser, Page } from 'playwright-core';
+import type { Browser } from 'playwright-core';
 import type { PageCrawledEvent } from '@llm-crawler/shared';
 import { normalizeUrl, createLogger } from '@llm-crawler/shared';
 import { extractPageData, extractLinks } from './parser.js';

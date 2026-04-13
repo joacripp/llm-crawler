@@ -18,7 +18,9 @@ process.env.DATABASE_URL = 'postgres://test';
 const { pingPrisma } = await import('../src/prisma.js');
 
 describe('pingPrisma', () => {
-  beforeEach(() => { mockQueryRawUnsafe.mockReset(); });
+  beforeEach(() => {
+    mockQueryRawUnsafe.mockReset();
+  });
 
   it('returns true when SELECT 1 succeeds', async () => {
     mockQueryRawUnsafe.mockResolvedValue([{ '?column?': 1 }]);

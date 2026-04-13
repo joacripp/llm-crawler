@@ -15,7 +15,10 @@ const { SessionService } = await import('../src/session/session.service.js');
 describe('SessionService', () => {
   let service: InstanceType<typeof SessionService>;
 
-  beforeEach(() => { vi.clearAllMocks(); service = new SessionService(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new SessionService();
+  });
 
   it('creates a new anonymous session', async () => {
     mockCreate.mockResolvedValue({ id: 'sess-1', userId: null });

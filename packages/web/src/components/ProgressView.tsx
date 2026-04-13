@@ -55,9 +55,7 @@ export default function ProgressView({ pagesFound, status, rootUrl, latestUrls, 
               <p className="text-3xl font-bold text-indigo-600">{pagesFound}</p>
               <p className="text-sm text-slate-500">sub-pages discovered</p>
             </div>
-            {startedAt && (
-              <p className="text-xs text-slate-400">{formatElapsed(elapsed)} elapsed</p>
-            )}
+            {startedAt && <p className="text-xs text-slate-400">{formatElapsed(elapsed)} elapsed</p>}
           </>
         )}
 

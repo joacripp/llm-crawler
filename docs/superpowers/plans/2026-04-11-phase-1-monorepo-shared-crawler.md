@@ -57,6 +57,7 @@ llm-crawler/
 ### Task 1: Monorepo Scaffold
 
 **Files:**
+
 - Create: `package.json` (overwrite existing)
 - Create: `turbo.json`
 - Create: `tsconfig.base.json`
@@ -221,6 +222,7 @@ git commit -m "scaffold: monorepo with turborepo, shared + crawler packages"
 ### Task 2: Shared Types
 
 **Files:**
+
 - Create: `packages/shared/src/types.ts`
 - Test: `packages/shared/tests/types.test.ts`
 
@@ -312,7 +314,7 @@ export interface JobMessage {
   jobId: string;
   urls: string[];
   visited?: string[];
-  stateS3Key?: string;  // for large resume state
+  stateS3Key?: string; // for large resume state
   maxDepth?: number;
   maxPages?: number;
 }
@@ -350,6 +352,7 @@ git commit -m "feat(shared): add core types — PageData, JobMessage, events"
 ### Task 3: URL Utilities
 
 **Files:**
+
 - Create: `packages/shared/src/url-utils.ts`
 - Test: `packages/shared/tests/url-utils.test.ts`
 
@@ -489,6 +492,7 @@ git commit -m "feat(shared): add URL utility functions"
 ### Task 4: Shared Barrel Export + Build
 
 **Files:**
+
 - Create: `packages/shared/src/index.ts`
 
 - [ ] **Step 1: Create barrel export**
@@ -521,6 +525,7 @@ git commit -m "feat(shared): barrel export"
 ### Task 5: Crawler — Page Parser
 
 **Files:**
+
 - Create: `packages/crawler/src/parser.ts`
 - Test: `packages/crawler/tests/parser.test.ts`
 
@@ -595,18 +600,18 @@ describe('extractLinks', () => {
 
   it('excludes mailto, anchor, and tel links', () => {
     const links = extractLinks(HTML, 'https://example.com/about');
-    expect(links.some(l => l.includes('mailto'))).toBe(false);
-    expect(links.some(l => l.includes('#section'))).toBe(false);
+    expect(links.some((l) => l.includes('mailto'))).toBe(false);
+    expect(links.some((l) => l.includes('#section'))).toBe(false);
   });
 
   it('excludes asset extensions', () => {
     const links = extractLinks(HTML, 'https://example.com/about');
-    expect(links.some(l => l.includes('.png'))).toBe(false);
+    expect(links.some((l) => l.includes('.png'))).toBe(false);
   });
 
   it('excludes skippable paths', () => {
     const links = extractLinks(HTML, 'https://example.com/about');
-    expect(links.some(l => l.includes('/api/'))).toBe(false);
+    expect(links.some((l) => l.includes('/api/'))).toBe(false);
   });
 });
 ```
@@ -621,21 +626,13 @@ Expected: FAIL — module not found
 ```typescript
 // packages/crawler/src/parser.ts
 import * as cheerio from 'cheerio';
-import {
-  normalizeUrl,
-  isSkippableHref,
-  isSkippableExtension,
-  isSkippablePath,
-} from '@llm-crawler/shared';
+import { normalizeUrl, isSkippableHref, isSkippableExtension, isSkippablePath } from '@llm-crawler/shared';
 import type { PageData } from '@llm-crawler/shared';
 
 export function extractPageData(html: string, url: string, depth: number): PageData {
   const $ = cheerio.load(html);
 
-  const title =
-    $('title').first().text().trim() ||
-    $('h1').first().text().trim() ||
-    url;
+  const title = $('title').first().text().trim() || $('h1').first().text().trim() || url;
 
   const description =
     $('meta[name="description"]').attr('content')?.trim() ||
@@ -692,6 +689,7 @@ git commit -m "feat(crawler): page parser — extract metadata and links"
 ### Task 6: Crawler — SPA Detector
 
 **Files:**
+
 - Create: `packages/crawler/src/spa-detector.ts`
 - Test: `packages/crawler/tests/spa-detector.test.ts`
 
@@ -771,10 +769,11 @@ export function isSpa(html: string): boolean {
   const hasSpaRoot = $('#root, #app, #__next, #__nuxt, [data-reactroot]').length > 0;
   const hasModuleScript = $('script[type="module"]').length > 0;
 
-  const hasStaticNavLinks = $('a[href^="/"], a[href^="./"]').filter((_, el) => {
-    const href = $(el).attr('href') ?? '';
-    return !isSkippableExtension(href);
-  }).length > 0;
+  const hasStaticNavLinks =
+    $('a[href^="/"], a[href^="./"]').filter((_, el) => {
+      const href = $(el).attr('href') ?? '';
+      return !isSkippableExtension(href);
+    }).length > 0;
 
   return (hasSpaRoot || hasModuleScript) && !hasStaticNavLinks;
 }
@@ -797,6 +796,7 @@ git commit -m "feat(crawler): SPA detection heuristic"
 ### Task 7: Crawler — EventBridge Emitter
 
 **Files:**
+
 - Create: `packages/crawler/src/event-emitter.ts`
 - Test: `packages/crawler/tests/event-emitter.test.ts`
 
@@ -921,7 +921,7 @@ export class EventEmitter {
             EventBusName: this.busName,
           },
         ],
-      })
+      }),
     );
   }
 }
@@ -944,6 +944,7 @@ git commit -m "feat(crawler): EventBridge emitter with URL splitting"
 ### Task 8: Crawler — Fetcher
 
 **Files:**
+
 - Create: `packages/crawler/src/fetcher.ts`
 
 - [ ] **Step 1: Write fetcher.ts**
@@ -999,6 +1000,7 @@ git commit -m "feat(crawler): HTTP and browser fetchers"
 ### Task 9: Crawler — BFS Crawl Engine
 
 **Files:**
+
 - Create: `packages/crawler/src/crawl.ts`
 - Test: `packages/crawler/tests/crawl.test.ts`
 
@@ -1014,9 +1016,12 @@ import type { PageCrawledEvent } from '@llm-crawler/shared';
 vi.mock('../src/fetcher.js', () => ({
   fetchWithAxios: vi.fn().mockImplementation((url: string) => {
     const pages: Record<string, string> = {
-      'https://example.com/': '<html><head><title>Home</title><meta name="description" content="Homepage"></head><body><a href="/about">About</a><a href="/docs">Docs</a></body></html>',
-      'https://example.com/about': '<html><head><title>About</title></head><body><a href="/team">Team</a></body></html>',
-      'https://example.com/docs': '<html><head><title>Docs</title></head><body><a href="/docs/intro">Intro</a></body></html>',
+      'https://example.com/':
+        '<html><head><title>Home</title><meta name="description" content="Homepage"></head><body><a href="/about">About</a><a href="/docs">Docs</a></body></html>',
+      'https://example.com/about':
+        '<html><head><title>About</title></head><body><a href="/team">Team</a></body></html>',
+      'https://example.com/docs':
+        '<html><head><title>Docs</title></head><body><a href="/docs/intro">Intro</a></body></html>',
       'https://example.com/team': '<html><head><title>Team</title></head><body></body></html>',
       'https://example.com/docs/intro': '<html><head><title>Intro</title></head><body></body></html>',
     };
@@ -1036,8 +1041,12 @@ describe('crawl', () => {
       maxPages: 10,
       concurrency: 2,
       useBrowser: false,
-      onPageCrawled: async (event) => { events.push(event); },
-      onCompleted: async () => { completed = true; },
+      onPageCrawled: async (event) => {
+        events.push(event);
+      },
+      onCompleted: async () => {
+        completed = true;
+      },
     });
 
     expect(events.length).toBe(3); // root + about + docs
@@ -1056,7 +1065,9 @@ describe('crawl', () => {
       maxPages: 10,
       concurrency: 2,
       useBrowser: false,
-      onPageCrawled: async (event) => { events.push(event); },
+      onPageCrawled: async (event) => {
+        events.push(event);
+      },
       onCompleted: async () => {},
     });
 
@@ -1072,7 +1083,9 @@ describe('crawl', () => {
       maxPages: 2,
       concurrency: 2,
       useBrowser: false,
-      onPageCrawled: async (event) => { events.push(event); },
+      onPageCrawled: async (event) => {
+        events.push(event);
+      },
       onCompleted: async () => {},
     });
 
@@ -1089,14 +1102,16 @@ describe('crawl', () => {
       maxPages: 10,
       concurrency: 2,
       useBrowser: false,
-      onPageCrawled: async (event) => { events.push(event); },
+      onPageCrawled: async (event) => {
+        events.push(event);
+      },
       onCompleted: async () => {},
     });
 
     // Should NOT crawl /about since it's in visited
-    expect(events.find(e => e.url === 'https://example.com/about')).toBeUndefined();
+    expect(events.find((e) => e.url === 'https://example.com/about')).toBeUndefined();
     // Should still crawl /docs
-    expect(events.find(e => e.url === 'https://example.com/docs')).toBeDefined();
+    expect(events.find((e) => e.url === 'https://example.com/docs')).toBeDefined();
   });
 });
 ```
@@ -1163,9 +1178,7 @@ export async function crawl(config: CrawlConfig): Promise<void> {
         limit(async () => {
           if (pageCount >= maxPages) return;
 
-          const html = useBrowser && browser
-            ? await fetchWithBrowser(browser, url)
-            : await fetchWithAxios(url);
+          const html = useBrowser && browser ? await fetchWithBrowser(browser, url) : await fetchWithAxios(url);
 
           if (!html) return;
 
@@ -1188,8 +1201,8 @@ export async function crawl(config: CrawlConfig): Promise<void> {
 
           await onPageCrawled(event);
           pageCount++;
-        })
-      )
+        }),
+      ),
     );
 
     currentLevel = nextLevel;
@@ -1216,6 +1229,7 @@ git commit -m "feat(crawler): BFS crawl engine with visited seeding"
 ### Task 10: Crawler — Lambda Handler
 
 **Files:**
+
 - Create: `packages/crawler/src/handler.ts`
 - Create: `packages/crawler/src/index.ts`
 - Test: `packages/crawler/tests/handler.test.ts`
@@ -1229,8 +1243,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Mock crawl module
 const mockCrawl = vi.fn().mockImplementation(async (config) => {
   await config.onPageCrawled({
-    jobId: '', url: 'https://example.com/', title: 'Home',
-    description: '', depth: 0, newUrls: [],
+    jobId: '',
+    url: 'https://example.com/',
+    title: 'Home',
+    description: '',
+    depth: 0,
+    newUrls: [],
   });
   await config.onCompleted();
 });
@@ -1410,6 +1428,7 @@ git commit -m "feat(crawler): Lambda handler — SQS to EventBridge pipeline"
 ### Task 11: Prisma Schema
 
 **Files:**
+
 - Create: `prisma/schema.prisma`
 
 - [ ] **Step 1: Write schema.prisma**

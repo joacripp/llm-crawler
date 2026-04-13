@@ -14,7 +14,10 @@ const { HealthController } = await import('../src/health.controller.js');
 function makeRes() {
   return {
     statusCode: 0,
-    status: vi.fn(function (this: any, code: number) { this.statusCode = code; return this; }),
+    status: vi.fn(function (this: any, code: number) {
+      this.statusCode = code;
+      return this;
+    }),
   };
 }
 
@@ -81,8 +84,18 @@ describe('HealthController', () => {
 
     it('runs both pings in parallel (does not await sequentially)', async () => {
       const order: string[] = [];
-      mockPingPrisma.mockImplementation(async () => { order.push('db-start'); await Promise.resolve(); order.push('db-end'); return true; });
-      mockPingRedis.mockImplementation(async () => { order.push('redis-start'); await Promise.resolve(); order.push('redis-end'); return true; });
+      mockPingPrisma.mockImplementation(async () => {
+        order.push('db-start');
+        await Promise.resolve();
+        order.push('db-end');
+        return true;
+      });
+      mockPingRedis.mockImplementation(async () => {
+        order.push('redis-start');
+        await Promise.resolve();
+        order.push('redis-end');
+        return true;
+      });
       const res = makeRes();
 
       await controller.ready(res as any);

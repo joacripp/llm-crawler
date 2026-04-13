@@ -19,7 +19,17 @@ export interface CrawlConfig {
 }
 
 export async function crawl(config: CrawlConfig): Promise<void> {
-  const { urls, visited: initialVisited = [], maxDepth, maxPages, concurrency, useBrowser, browser, onPageCrawled, onCompleted } = config;
+  const {
+    urls,
+    visited: initialVisited = [],
+    maxDepth,
+    maxPages,
+    concurrency,
+    useBrowser,
+    browser,
+    onPageCrawled,
+    onCompleted,
+  } = config;
   const visited = new Set<string>(initialVisited.map(normalizeUrl));
   const limit = pLimit(concurrency);
   let pageCount = 0;
@@ -45,8 +55,8 @@ export async function crawl(config: CrawlConfig): Promise<void> {
           }
           const event: PageCrawledEvent = { jobId: '', ...pageData, newUrls };
           await onPageCrawled(event);
-        })
-      )
+        }),
+      ),
     );
     currentLevel = nextLevel;
   }

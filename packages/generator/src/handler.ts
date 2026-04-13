@@ -1,6 +1,13 @@
 import type { SQSEvent } from 'aws-lambda';
 import type { JobCompletedEvent, PageData } from '@llm-crawler/shared';
-import { getPrisma, generateLlmsTxt, publishJobUpdate, disconnectPrisma, disconnectRedis, createLogger } from '@llm-crawler/shared';
+import {
+  getPrisma,
+  generateLlmsTxt,
+  publishJobUpdate,
+  disconnectPrisma,
+  disconnectRedis,
+  createLogger,
+} from '@llm-crawler/shared';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
 const log = createLogger('generator');
@@ -34,7 +41,10 @@ export async function handler(event: SQSEvent): Promise<void> {
       }
 
       const pageData: PageData[] = pages.map((p) => ({
-        url: p.url, title: p.title ?? p.url, description: p.description ?? '', depth: p.depth ?? 0,
+        url: p.url,
+        title: p.title ?? p.url,
+        description: p.description ?? '',
+        depth: p.depth ?? 0,
       }));
 
       const llmsTxt = generateLlmsTxt(pageData, rootUrl);
@@ -42,7 +52,14 @@ export async function handler(event: SQSEvent): Promise<void> {
       log.info('llms.txt generated', { jobId, chars: llmsTxt.length });
 
       await s3.send(new PutObjectCommand({ Bucket: bucket, Key: s3Key, Body: llmsTxt, ContentType: 'text/plain' }));
-      await s3.send(new PutObjectCommand({ Bucket: bucket, Key: `results/${jobId}/pages.json`, Body: JSON.stringify(pageData, null, 2), ContentType: 'application/json' }));
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: bucket,
+          Key: `results/${jobId}/pages.json`,
+          Body: JSON.stringify(pageData, null, 2),
+          ContentType: 'application/json',
+        }),
+      );
       log.info('Uploaded to S3', { jobId, s3Key });
 
       await prisma.job.update({ where: { id: jobId }, data: { status: 'completed', s3Key, pagesFound: pages.length } });
@@ -53,5 +70,8 @@ export async function handler(event: SQSEvent): Promise<void> {
       const downloadUrl = `https://${bucket}.s3.amazonaws.com/${s3Key}`;
       await publishJobUpdate(jobId, { type: 'completed', downloadUrl });
     }
-  } finally { await disconnectPrisma(); await disconnectRedis(); }
+  } finally {
+    await disconnectPrisma();
+    await disconnectRedis();
+  }
 }

@@ -14,17 +14,22 @@ function jsonResponse(body: unknown, init: { ok?: boolean; status?: number } = {
 }
 
 describe('api', () => {
-  beforeEach(() => { mockFetch.mockReset(); });
+  beforeEach(() => {
+    mockFetch.mockReset();
+  });
 
   describe('createJob', () => {
     it('sends POST with body and credentials', async () => {
       mockFetch.mockResolvedValueOnce(jsonResponse({ id: 'job-1' }));
       const result = await api.createJob({ url: 'https://example.com', maxDepth: 2, maxPages: 50 });
-      expect(mockFetch).toHaveBeenCalledWith('/api/jobs', expect.objectContaining({
-        method: 'POST',
-        credentials: 'include',
-        body: JSON.stringify({ url: 'https://example.com', maxDepth: 2, maxPages: 50 }),
-      }));
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/jobs',
+        expect.objectContaining({
+          method: 'POST',
+          credentials: 'include',
+          body: JSON.stringify({ url: 'https://example.com', maxDepth: 2, maxPages: 50 }),
+        }),
+      );
       expect(result.id).toBe('job-1');
     });
 
@@ -47,9 +52,9 @@ describe('api', () => {
   describe('401 refresh-and-retry', () => {
     it('refreshes token and retries the original request on 401', async () => {
       mockFetch
-        .mockResolvedValueOnce(jsonResponse({ message: 'expired' }, { ok: false, status: 401 }))  // first call: 401
-        .mockResolvedValueOnce(jsonResponse({ ok: true }))                                          // /auth/refresh: ok
-        .mockResolvedValueOnce(jsonResponse({ id: 'user-1', email: 'a@b.com' }));                  // retry: success
+        .mockResolvedValueOnce(jsonResponse({ message: 'expired' }, { ok: false, status: 401 })) // first call: 401
+        .mockResolvedValueOnce(jsonResponse({ ok: true })) // /auth/refresh: ok
+        .mockResolvedValueOnce(jsonResponse({ id: 'user-1', email: 'a@b.com' })); // retry: success
 
       const result = await api.me();
 
@@ -63,7 +68,7 @@ describe('api', () => {
     it('throws when refresh fails', async () => {
       mockFetch
         .mockResolvedValueOnce(jsonResponse({ message: 'expired' }, { ok: false, status: 401 }))
-        .mockResolvedValueOnce(jsonResponse({}, { ok: false, status: 401 }));  // refresh fails
+        .mockResolvedValueOnce(jsonResponse({}, { ok: false, status: 401 })); // refresh fails
 
       await expect(api.me()).rejects.toThrow('expired');
       expect(mockFetch).toHaveBeenCalledTimes(2);
@@ -90,10 +95,13 @@ describe('api', () => {
     it('signup posts email + password', async () => {
       mockFetch.mockResolvedValueOnce(jsonResponse({ id: 'user-1', email: 'a@b.com' }));
       const result = await api.signup('a@b.com', 'password123');
-      expect(mockFetch).toHaveBeenCalledWith('/api/auth/signup', expect.objectContaining({
-        method: 'POST',
-        body: JSON.stringify({ email: 'a@b.com', password: 'password123' }),
-      }));
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/auth/signup',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ email: 'a@b.com', password: 'password123' }),
+        }),
+      );
       expect(result.id).toBe('user-1');
     });
 

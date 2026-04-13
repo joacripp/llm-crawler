@@ -24,11 +24,20 @@ const { JobsService } = await import('../src/jobs/jobs.service.js');
 describe('JobsService', () => {
   let service: InstanceType<typeof JobsService>;
 
-  beforeEach(() => { vi.clearAllMocks(); process.env.JOBS_QUEUE_URL = 'https://sqs.example.com/crawl-jobs'; service = new JobsService(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.JOBS_QUEUE_URL = 'https://sqs.example.com/crawl-jobs';
+    service = new JobsService();
+  });
 
   it('creates a job and enqueues to SQS', async () => {
     mockCreate.mockResolvedValue({ id: 'job-1', rootUrl: 'https://example.com', status: 'pending' });
-    const job = await service.createJob({ rootUrl: 'https://example.com', maxDepth: 3, maxPages: 200, anonSessionId: 'sess-1' });
+    const job = await service.createJob({
+      rootUrl: 'https://example.com',
+      maxDepth: 3,
+      maxPages: 200,
+      anonSessionId: 'sess-1',
+    });
     expect(mockCreate).toHaveBeenCalled();
     expect(mockSendMessage).toHaveBeenCalled();
     expect(job.id).toBe('job-1');

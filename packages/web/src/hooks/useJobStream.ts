@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 interface StreamState {
   pagesFound: number;
@@ -26,9 +26,7 @@ export function useJobStream(jobId: string | null): StreamState {
     source.addEventListener('progress', (e) => {
       const data = JSON.parse(e.data);
       setState((prev) => {
-        const latestUrls = data.url
-          ? [data.url, ...prev.latestUrls].slice(0, 8)
-          : prev.latestUrls;
+        const latestUrls = data.url ? [data.url, ...prev.latestUrls].slice(0, 8) : prev.latestUrls;
         return {
           pagesFound: data.pagesFound,
           status: 'running',
@@ -54,7 +52,10 @@ export function useJobStream(jobId: string | null): StreamState {
       source.close();
     };
 
-    return () => { source.close(); sourceRef.current = null; };
+    return () => {
+      source.close();
+      sourceRef.current = null;
+    };
   }, [jobId]);
 
   return state;

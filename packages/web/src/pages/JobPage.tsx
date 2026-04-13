@@ -19,24 +19,30 @@ export default function JobPage() {
 
   useEffect(() => {
     if (!id) return;
-    api.getJob(id).then((job) => {
-      setInitialStatus(job.status);
-      setInitialPagesFound(job.pagesFound);
-      setRootUrl(job.rootUrl);
-      setCreatedAt(new Date(job.createdAt).getTime());
-    }).finally(() => setLoading(false));
+    api
+      .getJob(id)
+      .then((job) => {
+        setInitialStatus(job.status);
+        setInitialPagesFound(job.pagesFound);
+        setRootUrl(job.rootUrl);
+        setCreatedAt(new Date(job.createdAt).getTime());
+      })
+      .finally(() => setLoading(false));
   }, [id]);
 
   // Poll while streaming to detect completion if SSE doesn't connect
   useEffect(() => {
     if (!id || !shouldStream) return;
     const interval = setInterval(() => {
-      api.getJob(id).then((job) => {
-        if (job.status === 'completed') {
-          setInitialStatus('completed');
-          setInitialPagesFound(job.pagesFound);
-        }
-      }).catch(() => {});
+      api
+        .getJob(id)
+        .then((job) => {
+          if (job.status === 'completed') {
+            setInitialStatus('completed');
+            setInitialPagesFound(job.pagesFound);
+          }
+        })
+        .catch(() => {});
     }, 5000);
     return () => clearInterval(interval);
   }, [id, shouldStream]);
@@ -67,13 +73,7 @@ export default function JobPage() {
             startedAt={createdAt}
           />
         )}
-        {isComplete && id && (
-          <ResultView
-            jobId={id}
-            pagesFound={pagesFound}
-            rootUrl={rootUrl}
-          />
-        )}
+        {isComplete && id && <ResultView jobId={id} pagesFound={pagesFound} rootUrl={rootUrl} />}
         {isFailed && (
           <div className="mt-4 rounded-lg bg-red-50 border border-red-100 px-4 py-3 text-center">
             <p className="text-sm text-red-600">This crawl job failed. Please try again.</p>

@@ -9,8 +9,12 @@ const subscribed: Array<{ jobId: string; cb: Cb }> = [];
 const unsubscribed: Array<{ jobId: string; cb?: Cb }> = [];
 
 const sseService = {
-  subscribe: vi.fn(async (jobId: string, cb: Cb) => { subscribed.push({ jobId, cb }); }),
-  unsubscribe: vi.fn(async (jobId: string, cb?: Cb) => { unsubscribed.push({ jobId, cb }); }),
+  subscribe: vi.fn(async (jobId: string, cb: Cb) => {
+    subscribed.push({ jobId, cb });
+  }),
+  unsubscribe: vi.fn(async (jobId: string, cb?: Cb) => {
+    unsubscribed.push({ jobId, cb });
+  }),
 };
 
 const { SseController } = await import('../src/sse/sse.controller.js');
