@@ -22,6 +22,17 @@ export async function handler(event: SQSEvent): Promise<void> {
 
       const pages = await prisma.page.findMany({ where: { jobId } });
       log.info('Pages loaded', { jobId, rootUrl, pageCount: pages.length });
+
+      // Race guard: page.crawled events flow through a different SQS queue than
+      // job.completed, so we can be invoked before the consumer has persisted
+      // any pages. If we proceeded we'd produce an empty llms.txt and delete
+      // the (still-arriving) page rows. Throw so SQS retries after the
+      // visibility timeout — by then the consumer should have caught up.
+      if (pages.length === 0) {
+        log.warn('No pages persisted yet — throwing to let SQS retry', { jobId });
+        throw new Error(`No pages found for job ${jobId} — generator likely raced consumer; SQS will retry`);
+      }
+
       const pageData: PageData[] = pages.map((p: any) => ({
         url: p.url, title: p.title ?? p.url, description: p.description ?? '', depth: p.depth ?? 0,
       }));
