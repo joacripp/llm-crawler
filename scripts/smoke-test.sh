@@ -29,13 +29,22 @@ log() { echo "[smoke] $*"; }
 fail() { echo "[smoke] FAIL: $*" >&2; exit 1; }
 
 # ---------------------------------------------------------------------------
-# 1. Health check
+# 1. Health checks (liveness + readiness)
 # ---------------------------------------------------------------------------
-log "Checking $API_BASE/api/health"
+log "Checking $API_BASE/api/health (liveness)"
 HEALTH=$(curl -fsS --max-time 10 "$API_BASE/api/health") \
   || fail "Health endpoint did not respond with 2xx"
 echo "$HEALTH" | grep -q '"status":"ok"' \
   || fail "Health endpoint did not return status=ok: $HEALTH"
+log "  ok"
+
+log "Checking $API_BASE/api/health/ready (DB + Redis)"
+READY=$(curl -fsS --max-time 10 "$API_BASE/api/health/ready") \
+  || fail "Readiness endpoint did not respond with 2xx (degraded?)"
+echo "$READY" | grep -q '"db":"ok"' \
+  || fail "Readiness reports DB unhealthy: $READY"
+echo "$READY" | grep -q '"redis":"ok"' \
+  || fail "Readiness reports Redis unhealthy: $READY"
 log "  ok"
 
 # ---------------------------------------------------------------------------

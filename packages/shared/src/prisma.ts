@@ -19,3 +19,13 @@ export function getPrisma(): PrismaClient {
 export async function disconnectPrisma(): Promise<void> {
   if (prisma) { await prisma.$disconnect(); prisma = null; }
 }
+
+export async function pingPrisma(): Promise<boolean> {
+  try {
+    const client = getPrisma();
+    await client.$queryRawUnsafe('SELECT 1');
+    return true;
+  } catch {
+    return false;
+  }
+}
