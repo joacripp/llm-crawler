@@ -34,14 +34,15 @@ export async function handler(event: SQSEvent): Promise<void> {
   let browser;
   if (useBrowser) {
     const { chromium } = await import('playwright-core');
-    // Use full chromium (not headless shell) — headless shell crashes on Lambda
-    const browsersPath = process.env.PLAYWRIGHT_BROWSERS_PATH || '/opt/ms-playwright';
-    const execPath = `${browsersPath}/chromium-1217/chrome-linux64/chrome`;
+    const sparticuzChromium = await import('@sparticuz/chromium');
+    const execPath = await sparticuzChromium.default.executablePath();
     console.log(`[crawler] Launching Chromium from ${execPath}`);
+    // Remove --single-process from sparticuz args — it crashes on second browser.newPage()
+    const args = sparticuzChromium.default.args.filter((a: string) => a !== '--single-process');
     browser = await chromium.launch({
       headless: true,
       executablePath: execPath,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
+      args,
     });
     console.log(`[crawler] Playwright browser launched`);
   }

@@ -12,6 +12,7 @@
   "dependencies": {
     "@aws-sdk/client-eventbridge": "^3.700.0",
     "@llm-crawler/shared": "*",
+    "@sparticuz/chromium": "^147.0.0",
     "axios": "^1.7.9",
     "cheerio": "1.0.0",
     "p-limit": "^6.2.0"

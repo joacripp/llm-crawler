@@ -64,7 +64,7 @@ resource "aws_lambda_function" "crawler" {
   package_type  = "Image"
   image_uri     = "${aws_ecr_repository.crawler.repository_url}:latest"
   timeout       = 900  # 15 minutes
-  memory_size   = 2048 # Chromium needs more memory
+  memory_size   = 3008 # Chromium needs significant memory for page rendering
 
   vpc_config {
     subnet_ids         = var.private_subnet_ids

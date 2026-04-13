@@ -5,12 +5,13 @@
 
  RUN  v3.2.4 /Users/joaquincrippa/projects/profound/llm-crawler/packages/crawler
 
- ✓ tests/event-emitter.test.ts (3 tests) 32ms
+ ✓ tests/event-emitter.test.ts (3 tests) 3ms
 stdout | tests/handler.test.ts > handler > parses SQS message and starts crawl
 [crawler] Starting job=abc-123 urls=1 visited=0 maxDepth=3 maxPages=200
 [crawler] Root URLs: https://example.com/
 [crawler] Probing https://example.com/ for SPA detection...
 
+ ✓ tests/spa-detector.test.ts (5 tests) 11ms
 stdout | tests/handler.test.ts > handler > parses SQS message and starts crawl
 [crawler] Server-rendered — using Cheerio
 [crawler] Page 1: https://example.com/ (depth=0, newUrls=0)
@@ -32,6 +33,8 @@ stdout | tests/handler.test.ts > handler > emits events for each crawled page
 [crawler] Root URLs: https://example.com/
 [crawler] Probing https://example.com/ for SPA detection...
 
+ ✓ tests/crawl.test.ts (4 tests) 11ms
+ ✓ tests/parser.test.ts (10 tests) 11ms
 stdout | tests/handler.test.ts > handler > emits events for each crawled page
 [crawler] Server-rendered — using Cheerio
 [crawler] Page 1: https://example.com/ (depth=0, newUrls=0)
@@ -86,13 +89,10 @@ stdout | tests/handler.test.ts > handler > passes visited URLs on resume
 stdout | tests/handler.test.ts > handler > passes visited URLs on resume
 [crawler] Job abc-123 finished. Pages: 1, Events: 1
 
- ✓ tests/handler.test.ts (4 tests) 257ms
- ✓ tests/spa-detector.test.ts (5 tests) 10ms
- ✓ tests/crawl.test.ts (4 tests) 19ms
- ✓ tests/parser.test.ts (10 tests) 27ms
+ ✓ tests/handler.test.ts (4 tests) 260ms
 
  Test Files  5 passed (5)
       Tests  26 passed (26)
-   Start at  21:18:16
-   Duration  1.79s (transform 440ms, setup 0ms, collect 2.49s, tests 344ms, environment 0ms, prepare 1.75s)
+   Start at  22:18:11
+   Duration  1.95s (transform 331ms, setup 0ms, collect 2.36s, tests 295ms, environment 1ms, prepare 1.90s)
 
