@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { EventEmitter } from 'events';
 import { firstValueFrom, take, toArray } from 'rxjs';
+import type { Request } from 'express';
 
 type Cb = (msg: string) => void;
 
@@ -13,6 +15,11 @@ const sseService = {
 
 const { SseController } = await import('../src/sse/sse.controller.js');
 
+function makeReq(): Request & EventEmitter {
+  // Express request behaves like an EventEmitter; we only need `on('close', …)`.
+  return new EventEmitter() as Request & EventEmitter;
+}
+
 describe('SseController', () => {
   let controller: InstanceType<typeof SseController>;
 
@@ -24,16 +31,14 @@ describe('SseController', () => {
   });
 
   it('subscribes to the job channel on stream open', async () => {
-    controller.stream('job-1');
-    // subscribe is awaited inside the controller, but we don't await its promise
-    // synchronously — flush microtasks to be safe.
+    controller.stream('job-1', makeReq());
     await Promise.resolve();
     expect(sseService.subscribe).toHaveBeenCalledWith('job-1', expect.any(Function));
     expect(subscribed[0].jobId).toBe('job-1');
   });
 
   it('emits parsed JSON messages with type field', async () => {
-    const obs$ = controller.stream('job-2');
+    const obs$ = controller.stream('job-2', makeReq());
     const collected = firstValueFrom(obs$.pipe(take(2), toArray()));
 
     await Promise.resolve();
@@ -47,7 +52,7 @@ describe('SseController', () => {
   });
 
   it('silently drops non-JSON messages', async () => {
-    const obs$ = controller.stream('job-3');
+    const obs$ = controller.stream('job-3', makeReq());
     const collected = firstValueFrom(obs$.pipe(take(1), toArray()));
 
     await Promise.resolve();
@@ -60,9 +65,21 @@ describe('SseController', () => {
     expect(events[0].data).toEqual({ type: 'progress', pagesFound: 1 });
   });
 
+  it('unsubscribes from SseService when the client disconnects', async () => {
+    const req = makeReq();
+    controller.stream('job-4', req);
+    await Promise.resolve();
+
+    const cb = subscribed[0].cb;
+    expect(sseService.unsubscribe).not.toHaveBeenCalled();
+
+    req.emit('close');
+
+    expect(sseService.unsubscribe).toHaveBeenCalledWith('job-4', cb);
+  });
+
   it('returns an Observable (not the raw Subject)', () => {
-    const obs$ = controller.stream('job-5');
-    // asObservable() hides the Subject's `next`/`complete` from callers.
+    const obs$ = controller.stream('job-5', makeReq());
     expect((obs$ as any).next).toBeUndefined();
     expect(typeof obs$.subscribe).toBe('function');
   });
