@@ -36,7 +36,7 @@ export async function handler(event: SQSEvent): Promise<void> {
     const { chromium } = await import('playwright-core');
     browser = await chromium.launch({
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--single-process'],
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
     });
     console.log(`[crawler] Playwright browser launched`);
   }
