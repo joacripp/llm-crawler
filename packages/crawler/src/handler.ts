@@ -1,6 +1,7 @@
 import type { SQSEvent } from 'aws-lambda';
 import type { JobMessage } from '@llm-crawler/shared';
 import { crawl } from './crawl.js';
+import { crawlSpa } from './spa-crawler.js';
 import { EventEmitter } from './event-emitter.js';
 import { isSpa } from './spa-detector.js';
 import { fetchWithAxios } from './fetcher.js';
@@ -50,25 +51,35 @@ export async function handler(event: SQSEvent): Promise<void> {
   let pageCount = 0;
   let eventCount = 0;
 
+  const onPageCrawled = async (pageEvent: any) => {
+    pageCount++;
+    eventCount++;
+    console.log(`[crawler] Page ${pageCount}: ${pageEvent.url} (depth=${pageEvent.depth}, newUrls=${pageEvent.newUrls.length})`);
+    await emitter.emitPageCrawled({ ...pageEvent, jobId });
+    console.log(`[crawler] Event emitted: page.crawled #${eventCount}`);
+  };
+
+  const onCompleted = async () => {
+    console.log(`[crawler] Crawl complete — ${pageCount} pages crawled, ${eventCount} events emitted`);
+    await emitter.emitJobCompleted({ jobId });
+    console.log(`[crawler] Event emitted: job.completed`);
+  };
+
   try {
-    await crawl({
-      urls, visited, maxDepth, maxPages,
-      concurrency: useBrowser ? 3 : 5,
-      useBrowser,
-      browser,
-      onPageCrawled: async (pageEvent) => {
-        pageCount++;
-        eventCount++;
-        console.log(`[crawler] Page ${pageCount}: ${pageEvent.url} (depth=${pageEvent.depth}, newUrls=${pageEvent.newUrls.length})`);
-        await emitter.emitPageCrawled({ ...pageEvent, jobId });
-        console.log(`[crawler] Event emitted: page.crawled #${eventCount}`);
-      },
-      onCompleted: async () => {
-        console.log(`[crawler] Crawl complete — ${pageCount} pages crawled, ${eventCount} events emitted`);
-        await emitter.emitJobCompleted({ jobId });
-        console.log(`[crawler] Event emitted: job.completed`);
-      },
-    });
+    if (useBrowser && browser) {
+      // SPA: single-page client-side navigation
+      await crawlSpa({
+        browser, rootUrl: urls[0], maxDepth, maxPages, visited,
+        onPageCrawled, onCompleted,
+      });
+    } else {
+      // Server-rendered: standard BFS with Cheerio
+      await crawl({
+        urls, visited, maxDepth, maxPages,
+        concurrency: 5, useBrowser: false,
+        onPageCrawled, onCompleted,
+      });
+    }
   } catch (err) {
     console.error(`[crawler] Error in job=${jobId}:`, err);
     throw err;
