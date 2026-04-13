@@ -17,6 +17,16 @@ export async function publishJobUpdate(jobId: string, message: RedisJobMessage):
   await client.publish(`job:${jobId}`, JSON.stringify(message));
 }
 
+export async function pingRedis(): Promise<boolean> {
+  try {
+    const client = getRedis();
+    const reply = await client.ping();
+    return reply === 'PONG';
+  } catch {
+    return false;
+  }
+}
+
 export async function disconnectRedis(): Promise<void> {
   if (redis) { await redis.quit(); redis = null; }
 }
