@@ -5,3 +5,5 @@ node_modules
 .turbo/
 dist/
 node_modules/
+*.tsbuildinfo
+TODO.md
