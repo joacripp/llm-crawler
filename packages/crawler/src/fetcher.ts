@@ -1,6 +1,6 @@
 // packages/crawler/src/fetcher.ts
 import axios from 'axios';
-import type { Browser } from 'playwright';
+import type { Browser } from 'playwright-core';
 
 export async function fetchWithAxios(url: string): Promise<string | null> {
   try {

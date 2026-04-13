@@ -51,17 +51,20 @@ resource "aws_iam_role_policy" "lambda" {
   })
 }
 
-# Crawler Lambda
+# Crawler Lambda (container image — includes Playwright + Chromium)
+resource "aws_ecr_repository" "crawler" {
+  name                 = "${var.project}-${var.environment}-crawler"
+  image_tag_mutability = "MUTABLE"
+  force_delete         = true
+}
+
 resource "aws_lambda_function" "crawler" {
   function_name = "${var.project}-${var.environment}-crawler"
   role          = aws_iam_role.lambda.arn
-  handler       = "index.handler"
-  runtime       = "nodejs20.x"
+  package_type  = "Image"
+  image_uri     = "${aws_ecr_repository.crawler.repository_url}:latest"
   timeout       = 900  # 15 minutes
-  memory_size   = 1024
-
-  filename         = "${path.module}/placeholder.zip"
-  source_code_hash = filebase64sha256("${path.module}/placeholder.zip")
+  memory_size   = 2048 # Chromium needs more memory
 
   vpc_config {
     subnet_ids         = var.private_subnet_ids

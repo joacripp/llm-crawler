@@ -61,12 +61,32 @@ jobs:
             --service ${{ secrets.ECS_SERVICE }} \
             --force-new-deployment
 
+  deploy-crawler:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - uses: aws-actions/amazon-ecr-login@v2
+      - run: |
+          docker build --provenance=false -t ${{ secrets.CRAWLER_ECR_URL }}:${{ github.sha }} -t ${{ secrets.CRAWLER_ECR_URL }}:latest -f packages/crawler/Dockerfile .
+          docker push ${{ secrets.CRAWLER_ECR_URL }}:${{ github.sha }}
+          docker push ${{ secrets.CRAWLER_ECR_URL }}:latest
+      - run: |
+          aws lambda update-function-code \
+            --function-name ${{ secrets.PROJECT }}-${{ secrets.ENVIRONMENT }}-crawler \
+            --image-uri ${{ secrets.CRAWLER_ECR_URL }}:${{ github.sha }}
+
   deploy-lambdas:
     needs: test
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        lambda: [crawler, consumer, generator, monitor]
+        lambda: [consumer, generator, monitor]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -81,7 +101,7 @@ jobs:
       - run: npm ci
       - run: npx prisma generate
       - run: npm run build
-      - run: npx esbuild packages/${{ matrix.lambda }}/src/index.ts --bundle --platform=node --target=node20 --format=cjs --outfile=/tmp/${{ matrix.lambda }}.js "--external:@aws-sdk/*" --external:playwright
+      - run: npx esbuild packages/${{ matrix.lambda }}/src/index.ts --bundle --platform=node --target=node20 --format=cjs --outfile=/tmp/${{ matrix.lambda }}.js "--external:@aws-sdk/*" --external:playwright-core
       - run: |
           mkdir -p /tmp/lambda-${{ matrix.lambda }}
           cp /tmp/${{ matrix.lambda }}.js /tmp/lambda-${{ matrix.lambda }}/index.js

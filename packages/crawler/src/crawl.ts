@@ -4,7 +4,7 @@ import { normalizeUrl } from '@llm-crawler/shared';
 import type { PageCrawledEvent } from '@llm-crawler/shared';
 import { fetchWithAxios, fetchWithBrowser } from './fetcher.js';
 import { extractPageData, extractLinks } from './parser.js';
-import type { Browser } from 'playwright';
+import type { Browser } from 'playwright-core';
 
 export interface CrawlConfig {
   urls: string[];
