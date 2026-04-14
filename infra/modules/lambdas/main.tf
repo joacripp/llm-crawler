@@ -110,9 +110,10 @@ resource "aws_lambda_function" "consumer" {
 }
 
 resource "aws_lambda_event_source_mapping" "consumer_sqs" {
-  event_source_arn = var.crawl_pages_queue_arn
-  function_name    = aws_lambda_function.consumer.arn
-  batch_size       = 10
+  event_source_arn       = var.crawl_pages_queue_arn
+  function_name          = aws_lambda_function.consumer.arn
+  batch_size             = 10
+  function_response_types = ["ReportBatchItemFailures"]
 }
 
 # Generator Lambda

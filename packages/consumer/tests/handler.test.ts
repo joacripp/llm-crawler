@@ -30,11 +30,22 @@ vi.mock('@llm-crawler/shared', async (importOriginal) => {
 const { handler } = await import('../src/handler.js');
 const { publishJobUpdate } = await import('@llm-crawler/shared');
 
-function makeSQSEvent(detail: object) {
-  return {
-    Records: [{ body: JSON.stringify({ source: 'llm-crawler', 'detail-type': 'page.crawled', detail }) }],
-  } as any;
+function makeRecord(detail: object, messageId = 'msg-1') {
+  return { messageId, body: JSON.stringify({ source: 'llm-crawler', 'detail-type': 'page.crawled', detail }) };
 }
+
+function makeSQSEvent(...records: ReturnType<typeof makeRecord>[]) {
+  return { Records: records } as any;
+}
+
+const goodDetail = {
+  jobId: 'job-1',
+  url: 'https://example.com/',
+  title: 'Home',
+  description: '',
+  depth: 0,
+  newUrls: [],
+};
 
 describe('consumer handler', () => {
   beforeEach(() => {
@@ -42,45 +53,45 @@ describe('consumer handler', () => {
     mockCountPages.mockResolvedValue(42);
   });
 
+  it('returns SQSBatchResponse with empty batchItemFailures on success', async () => {
+    const result = await handler(makeSQSEvent(makeRecord(goodDetail)));
+    expect(result).toEqual({ batchItemFailures: [] });
+  });
+
   it('upserts page data into Postgres', async () => {
     await handler(
-      makeSQSEvent({
-        jobId: 'job-1',
-        url: 'https://example.com/about',
-        title: 'About',
-        description: 'About page',
-        depth: 1,
-        newUrls: [],
-      }),
+      makeSQSEvent(
+        makeRecord({
+          jobId: 'job-1',
+          url: 'https://example.com/about',
+          title: 'About',
+          description: 'About page',
+          depth: 1,
+          newUrls: [],
+        }),
+      ),
     );
     expect(mockUpsertPage).toHaveBeenCalled();
   });
 
   it('upserts discovered URLs', async () => {
     await handler(
-      makeSQSEvent({
-        jobId: 'job-1',
-        url: 'https://example.com/',
-        title: 'Home',
-        description: '',
-        depth: 0,
-        newUrls: ['https://example.com/about', 'https://example.com/docs'],
-      }),
+      makeSQSEvent(
+        makeRecord({
+          jobId: 'job-1',
+          url: 'https://example.com/',
+          title: 'Home',
+          description: '',
+          depth: 0,
+          newUrls: ['https://example.com/about', 'https://example.com/docs'],
+        }),
+      ),
     );
     expect(mockUpsertDiscoveredUrl).toHaveBeenCalledTimes(2);
   });
 
   it('publishes progress to Redis', async () => {
-    await handler(
-      makeSQSEvent({
-        jobId: 'job-1',
-        url: 'https://example.com/',
-        title: 'Home',
-        description: '',
-        depth: 0,
-        newUrls: [],
-      }),
-    );
+    await handler(makeSQSEvent(makeRecord(goodDetail)));
     expect(publishJobUpdate).toHaveBeenCalledWith('job-1', {
       type: 'progress',
       pagesFound: 42,
@@ -90,20 +101,9 @@ describe('consumer handler', () => {
 
   describe('job status updates', () => {
     it('transitions pending → running with fresh updatedAt', async () => {
-      await handler(
-        makeSQSEvent({
-          jobId: 'job-1',
-          url: 'https://example.com/',
-          title: 'Home',
-          description: '',
-          depth: 0,
-          newUrls: [],
-        }),
-      );
+      await handler(makeSQSEvent(makeRecord(goodDetail)));
 
-      // Two updateMany calls: one to flip pending→running, one to bump updatedAt on running.
       expect(mockUpdateManyJob).toHaveBeenCalledTimes(2);
-
       const flipCall = mockUpdateManyJob.mock.calls[0][0];
       expect(flipCall.where).toEqual({ id: 'job-1', status: 'pending' });
       expect(flipCall.data.status).toBe('running');
@@ -111,45 +111,81 @@ describe('consumer handler', () => {
     });
 
     it('bumps updatedAt only when status is running (not completed/failed)', async () => {
-      await handler(
-        makeSQSEvent({
-          jobId: 'job-1',
-          url: 'https://example.com/',
-          title: 'Home',
-          description: '',
-          depth: 0,
-          newUrls: [],
-        }),
-      );
+      await handler(makeSQSEvent(makeRecord(goodDetail)));
 
       const bumpCall = mockUpdateManyJob.mock.calls[1][0];
       expect(bumpCall.where).toEqual({ id: 'job-1', status: 'running' });
-      // Crucially, no `status` field in `data` — we don't clobber completed/failed.
       expect(bumpCall.data).not.toHaveProperty('status');
       expect(bumpCall.data.updatedAt).toBeInstanceOf(Date);
     });
 
     it('does not write status field on the heartbeat update (preserves completed/failed)', async () => {
-      // Regression test for the race where consumer arrived after generator
-      // marked the job 'completed' and clobbered the status back to 'running',
-      // causing the resurrection monitor to re-enqueue forever.
-      await handler(
-        makeSQSEvent({
-          jobId: 'job-1',
-          url: 'https://example.com/',
-          title: 'Home',
-          description: '',
-          depth: 0,
-          newUrls: [],
-        }),
-      );
+      await handler(makeSQSEvent(makeRecord(goodDetail)));
 
       for (const call of mockUpdateManyJob.mock.calls) {
         const arg = call[0];
-        // No call should ever match a 'completed' or 'failed' job in its where clause.
         expect(arg.where.status).not.toBe('completed');
         expect(arg.where.status).not.toBe('failed');
       }
+    });
+  });
+
+  describe('per-record error handling (partial batch failure)', () => {
+    it('reports only the failed record, not the whole batch', async () => {
+      // First record succeeds, second throws
+      mockUpsertPage
+        .mockResolvedValueOnce({ id: 1 }) // record 1
+        .mockRejectedValueOnce(new Error('DB constraint violation')); // record 2
+
+      const result = await handler(
+        makeSQSEvent(
+          makeRecord(goodDetail, 'msg-ok'),
+          makeRecord({ ...goodDetail, url: 'https://example.com/bad' }, 'msg-bad'),
+        ),
+      );
+
+      expect(result.batchItemFailures).toEqual([{ itemIdentifier: 'msg-bad' }]);
+    });
+
+    it('processes remaining records after a failure (does not short-circuit)', async () => {
+      mockUpsertPage
+        .mockRejectedValueOnce(new Error('boom')) // record 1 fails
+        .mockResolvedValueOnce({ id: 2 }); // record 2 succeeds
+
+      const result = await handler(
+        makeSQSEvent(
+          makeRecord(goodDetail, 'msg-fail'),
+          makeRecord({ ...goodDetail, url: 'https://example.com/ok' }, 'msg-ok'),
+        ),
+      );
+
+      // Only the first record failed
+      expect(result.batchItemFailures).toEqual([{ itemIdentifier: 'msg-fail' }]);
+      // Second record's progress was published
+      expect(publishJobUpdate).toHaveBeenCalledOnce();
+    });
+
+    it('reports all records as failed when all throw', async () => {
+      mockUpsertPage.mockRejectedValue(new Error('total failure'));
+
+      const result = await handler(
+        makeSQSEvent(makeRecord(goodDetail, 'msg-1'), makeRecord(goodDetail, 'msg-2'), makeRecord(goodDetail, 'msg-3')),
+      );
+
+      expect(result.batchItemFailures).toHaveLength(3);
+      expect(result.batchItemFailures.map((f: { itemIdentifier: string }) => f.itemIdentifier).sort()).toEqual([
+        'msg-1',
+        'msg-2',
+        'msg-3',
+      ]);
+    });
+
+    it('handles malformed record body without crashing', async () => {
+      const result = await handler({
+        Records: [{ messageId: 'msg-bad', body: 'not-json' }],
+      } as any);
+
+      expect(result.batchItemFailures).toEqual([{ itemIdentifier: 'msg-bad' }]);
     });
   });
 });
