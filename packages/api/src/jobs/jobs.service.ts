@@ -17,7 +17,7 @@ export class JobsService {
 
   async createJob(options: CreateJobOptions) {
     const prisma = getPrisma();
-    const { rootUrl, maxDepth = 3, maxPages = 200, userId, anonSessionId } = options;
+    const { rootUrl, maxDepth = 10, maxPages = 1000, userId, anonSessionId } = options;
     if (!userId && anonSessionId) {
       const existingCount = await prisma.job.count({ where: { anonSessionId } });
       if (existingCount >= 1)

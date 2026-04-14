@@ -37,8 +37,8 @@ model Job {
   userId         String?  @map("user_id") @db.Uuid
   anonSessionId  String?  @map("anon_session_id") @db.Uuid
   rootUrl        String   @map("root_url")
-  maxDepth       Int      @default(3) @map("max_depth")
-  maxPages       Int      @default(200) @map("max_pages")
+  maxDepth       Int      @default(10) @map("max_depth")
+  maxPages       Int      @default(1000) @map("max_pages")
   status         String   @default("pending")
   s3Key          String?  @map("s3_key")
   pagesFound     Int      @default(0) @map("pages_found")

@@ -53,8 +53,8 @@ describe('HomePage', () => {
     await waitFor(() =>
       expect(api.createJob).toHaveBeenCalledWith({
         url: 'https://example.com',
-        maxDepth: 3,
-        maxPages: 200,
+        maxDepth: 10,
+        maxPages: 1000,
       }),
     );
     expect(mockNavigate).toHaveBeenCalledWith('/jobs/job-99');
@@ -103,8 +103,8 @@ describe('HomePage', () => {
     await user.click(screen.getByRole('button', { name: /advanced options/i }));
 
     // Labels in this form aren't htmlFor-bound; locate by current value instead.
-    const depthInput = screen.getByDisplayValue('3') as HTMLInputElement;
-    const pagesInput = screen.getByDisplayValue('200') as HTMLInputElement;
+    const depthInput = screen.getByDisplayValue('10') as HTMLInputElement;
+    const pagesInput = screen.getByDisplayValue('1000') as HTMLInputElement;
     await user.clear(depthInput);
     await user.type(depthInput, '5');
     await user.clear(pagesInput);

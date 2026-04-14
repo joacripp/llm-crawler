@@ -34,8 +34,8 @@ describe('JobsService', () => {
     mockCreate.mockResolvedValue({ id: 'job-1', rootUrl: 'https://example.com', status: 'pending' });
     const job = await service.createJob({
       rootUrl: 'https://example.com',
-      maxDepth: 3,
-      maxPages: 200,
+      maxDepth: 10,
+      maxPages: 1000,
       anonSessionId: 'sess-1',
     });
     expect(mockCreate).toHaveBeenCalled();

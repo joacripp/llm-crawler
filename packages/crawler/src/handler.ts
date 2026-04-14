@@ -15,7 +15,7 @@ export async function handler(event: SQSEvent): Promise<void> {
 
   const record = event.Records[0];
   const message: JobMessage = JSON.parse(record.body);
-  const { jobId, urls, visited, maxDepth = 3, maxPages = 200 } = message;
+  const { jobId, urls, visited, maxDepth = 10, maxPages = 1000 } = message;
 
   log.info('Starting job', { jobId, urlCount: urls.length, visitedCount: visited?.length ?? 0, maxDepth, maxPages });
   log.info('Root URLs', { jobId, urls: urls.slice(0, 5) });
