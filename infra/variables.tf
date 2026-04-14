@@ -34,6 +34,12 @@ variable "domain" {
   default     = "llmtxtgenerator.online"
 }
 
+variable "alert_email" {
+  description = "Email address for CloudWatch alarm notifications"
+  type        = string
+  default     = "joaquincrippa@gmail.com"
+}
+
 variable "hosted_zone_id" {
   description = "Route 53 hosted zone ID"
   type        = string

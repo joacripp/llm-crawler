@@ -112,6 +112,14 @@ module "api" {
   hosted_zone_id           = var.hosted_zone_id
 }
 
+module "monitoring" {
+  source      = "./modules/monitoring"
+  environment = var.environment
+  project     = var.project
+  aws_region  = var.aws_region
+  alert_email = var.alert_email
+}
+
 module "cdn" {
   source                     = "./modules/cdn"
   environment                = var.environment
