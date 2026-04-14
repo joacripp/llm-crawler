@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mockFindUnique = vi.fn();
+const mockFindFirst = vi.fn();
 const mockCreate = vi.fn();
 
 vi.mock('@llm-crawler/shared', () => ({
-  getPrisma: vi.fn(() => ({ user: { findUnique: mockFindUnique, create: mockCreate } })),
+  getPrisma: vi.fn(() => ({ user: { findUnique: mockFindUnique, findFirst: mockFindFirst, create: mockCreate } })),
 }));
 
 vi.mock('bcrypt', () => ({
@@ -59,5 +60,46 @@ describe('AuthService', () => {
     expect(tokens.accessToken).toBe('mock.jwt.token');
     expect(tokens.refreshToken).toBe('mock.jwt.token');
     expect(mockSign).toHaveBeenCalledTimes(2);
+  });
+
+  describe('findOrCreateOAuthUser', () => {
+    it('returns existing user when OAuth provider + ID match', async () => {
+      mockFindFirst.mockResolvedValue({
+        id: 'user-1',
+        email: 'g@example.com',
+        oauthProvider: 'google',
+        oauthId: '123',
+      });
+      const user = await service.findOrCreateOAuthUser({
+        oauthProvider: 'google',
+        oauthId: '123',
+        email: 'g@example.com',
+      });
+      expect(user.id).toBe('user-1');
+      expect(mockCreate).not.toHaveBeenCalled();
+    });
+
+    it('creates new user when no matching OAuth account exists', async () => {
+      mockFindFirst.mockResolvedValue(null);
+      mockFindUnique.mockResolvedValue(null);
+      mockCreate.mockResolvedValue({ id: 'user-2', email: 'new@example.com', oauthProvider: 'google', oauthId: '456' });
+      const user = await service.findOrCreateOAuthUser({
+        oauthProvider: 'google',
+        oauthId: '456',
+        email: 'new@example.com',
+      });
+      expect(mockCreate).toHaveBeenCalledWith({
+        data: { email: 'new@example.com', oauthProvider: 'google', oauthId: '456' },
+      });
+      expect(user.id).toBe('user-2');
+    });
+
+    it('throws when email is already taken by a password-based account', async () => {
+      mockFindFirst.mockResolvedValue(null);
+      mockFindUnique.mockResolvedValue({ id: 'user-1', email: 'taken@example.com', passwordHash: 'hashed' });
+      await expect(
+        service.findOrCreateOAuthUser({ oauthProvider: 'google', oauthId: '789', email: 'taken@example.com' }),
+      ).rejects.toThrow('An account with this email already exists');
+    });
   });
 });

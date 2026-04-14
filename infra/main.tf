@@ -107,6 +107,8 @@ module "api" {
   jobs_queue_url           = module.queues.crawl_jobs_queue_url
   results_bucket           = module.storage.results_bucket_name
   jwt_secret               = var.jwt_secret
+  google_client_id         = var.google_client_id
+  google_client_secret     = var.google_client_secret
   domain                   = var.domain
   certificate_arn          = var.certificate_arn
   hosted_zone_id           = var.hosted_zone_id

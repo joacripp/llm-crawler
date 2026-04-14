@@ -158,7 +158,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
       - run: terraform init
-      - run: terraform apply -auto-approve -var="jwt_secret=${{ secrets.JWT_SECRET }}" -var="db_password=${{ secrets.DB_PASSWORD }}"
+      - run: terraform apply -auto-approve -var="jwt_secret=${{ secrets.JWT_SECRET }}" -var="db_password=${{ secrets.DB_PASSWORD }}" -var="google_client_id=${{ secrets.GOOGLE_CLIENT_ID }}" -var="google_client_secret=${{ secrets.GOOGLE_CLIENT_SECRET }}"
 
   smoke-test:
     needs: [deploy-spa, deploy-api, deploy-crawler, deploy-lambdas, terraform]

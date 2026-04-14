@@ -3,6 +3,12 @@ import { JwtService } from '@nestjs/jwt';
 import bcrypt from 'bcrypt';
 import { getPrisma } from '@llm-crawler/shared';
 
+export interface OAuthProfile {
+  oauthProvider: string;
+  oauthId: string;
+  email: string | null;
+}
+
 @Injectable()
 export class AuthService {
   constructor(private jwtService: JwtService) {}
@@ -21,6 +27,32 @@ export class AuthService {
     if (!user?.passwordHash) return null;
     const valid = await bcrypt.compare(password, user.passwordHash);
     return valid ? user : null;
+  }
+
+  async findOrCreateOAuthUser(profile: OAuthProfile) {
+    const prisma = getPrisma();
+    const { oauthProvider, oauthId, email } = profile;
+
+    // 1. Try to find by OAuth provider + ID (returning user)
+    const existingOAuth = await prisma.user.findFirst({
+      where: { oauthProvider, oauthId },
+    });
+    if (existingOAuth) return existingOAuth;
+
+    // 2. Check if email is already taken by a password-based account.
+    // Reject rather than auto-link — safer, avoids account takeover if
+    // someone registers with an email they don't own.
+    if (email) {
+      const existingEmail = await prisma.user.findUnique({ where: { email } });
+      if (existingEmail) {
+        throw new ConflictException('An account with this email already exists. Please log in with your password.');
+      }
+    }
+
+    // 3. Create new OAuth user
+    return prisma.user.create({
+      data: { email, oauthProvider, oauthId },
+    });
   }
 
   generateTokens(user: { id: string; email: string | null }) {
