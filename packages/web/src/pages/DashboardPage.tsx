@@ -26,21 +26,32 @@ export default function DashboardPage() {
 
   return (
     <Layout>
-      <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-xl font-bold text-slate-900">Your Crawls</h2>
-        <Link
-          to="/"
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
-        >
-          + New llms.txt
-        </Link>
-      </div>
-      {(authLoading || loading) && <p className="text-sm text-slate-500">Loading...</p>}
-      {!authLoading && !loading && jobs.length === 0 && <p className="text-sm text-slate-500">No crawls yet.</p>}
-      <div className="space-y-3">
-        {jobs.map((job) => (
-          <JobCard key={job.id} {...job} />
-        ))}
+      <div className="animate-fade-in">
+        <div className="mb-8 flex items-center justify-between">
+          <h2 className="text-xl font-bold text-zinc-100">Your Crawls</h2>
+          <Link to="/" className="btn-primary">
+            + New llms.txt
+          </Link>
+        </div>
+        {(authLoading || loading) && (
+          <div className="py-16 text-center">
+            <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-blue-500/20 border-t-blue-400" />
+          </div>
+        )}
+        {!authLoading && !loading && jobs.length === 0 && (
+          <div className="card-dark rounded-xl px-8 py-16 text-center">
+            <p className="text-lg font-medium text-zinc-400">No crawls yet.</p>
+            <p className="mt-2 text-sm text-zinc-600">Generate your first llms.txt file to get started.</p>
+            <Link to="/" className="btn-primary mt-6 inline-flex">
+              Get started
+            </Link>
+          </div>
+        )}
+        <div className="space-y-3">
+          {jobs.map((job) => (
+            <JobCard key={job.id} {...job} />
+          ))}
+        </div>
       </div>
     </Layout>
   );

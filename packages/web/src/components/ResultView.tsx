@@ -27,7 +27,6 @@ export default function ResultView({ jobId, pagesFound, rootUrl }: ResultViewPro
             setLlmsTxt(content);
             setStatus('ready');
           } else if (retriesRef.current < 12) {
-            // Not ready yet — retry in 5s (up to 60s)
             retriesRef.current++;
             timeout = setTimeout(tryFetch, 5000);
           } else {
@@ -75,58 +74,73 @@ export default function ResultView({ jobId, pagesFound, rootUrl }: ResultViewPro
   };
 
   return (
-    <div className="space-y-4">
+    <div className="animate-fade-in space-y-4">
       {rootUrl && (
-        <div className="rounded-lg bg-green-50 px-4 py-3 border border-green-100">
-          <p className="text-xs font-medium text-green-600 uppercase tracking-wide">
-            {status === 'generating' ? 'Finishing up' : 'Completed'}
-          </p>
-          <p className="mt-0.5 text-sm font-medium text-green-800 truncate">{rootUrl}</p>
+        <div className="card-dark rounded-xl p-5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10">
+              <svg
+                className="h-4 w-4 text-emerald-400"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium uppercase tracking-wider text-emerald-400">Completed</p>
+              <p className="truncate text-sm font-medium text-zinc-200">{rootUrl}</p>
+            </div>
+            <div className="text-right">
+              <p className="font-mono text-2xl font-bold text-zinc-100">{pagesFound}</p>
+              <p className="text-xs text-zinc-500">pages</p>
+            </div>
+          </div>
         </div>
       )}
 
       {status === 'generating' && (
-        <div className="flex flex-col items-center gap-3 py-6">
-          <div className="h-6 w-6 animate-spin rounded-full border-[2px] border-green-200 border-t-green-600" />
-          <p className="text-sm font-medium text-slate-700">Generating your llms.txt...</p>
-          <p className="text-xs text-slate-400">This usually takes a few seconds</p>
+        <div className="flex flex-col items-center gap-3 py-8">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-amber-500/20 border-t-amber-400" />
+          <p className="text-sm font-medium text-zinc-300">Generating your llms.txt...</p>
+          <p className="text-xs text-zinc-600">This usually takes a few seconds</p>
         </div>
       )}
 
       {status === 'ready' && (
         <>
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-slate-600">
-              <span className="font-semibold text-green-600">{pagesFound} sub-pages</span> crawled
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={handleCopy}
-                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-              >
-                {copied ? 'Copied!' : 'Copy'}
-              </button>
-              <button
-                onClick={handleDownload}
-                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-              >
-                Download
-              </button>
+          {/* Code block with controls */}
+          <div className="card-dark overflow-hidden rounded-xl">
+            <div className="flex items-center justify-between border-b border-zinc-800/50 px-4 py-2.5">
+              <span className="font-mono text-xs text-zinc-500">llms.txt</span>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleCopy}
+                  className="rounded-md border border-zinc-700 bg-zinc-800/50 px-3 py-1 text-xs font-medium text-zinc-300 transition-all hover:border-zinc-600 hover:text-zinc-100"
+                >
+                  {copied ? 'Copied!' : 'Copy'}
+                </button>
+                <button onClick={handleDownload} className="btn-primary !px-3 !py-1 !text-xs">
+                  Download
+                </button>
+              </div>
             </div>
+            {llmsTxt && (
+              <pre className="max-h-96 overflow-auto p-4 font-mono text-xs leading-relaxed text-zinc-300">
+                {llmsTxt}
+              </pre>
+            )}
           </div>
-
-          {llmsTxt && (
-            <textarea
-              readOnly
-              value={llmsTxt}
-              className="w-full h-80 rounded-lg border border-slate-200 bg-slate-50 p-4 font-mono text-xs text-slate-700 resize-y focus:outline-none focus:border-indigo-300"
-              spellCheck={false}
-            />
-          )}
         </>
       )}
 
-      {status === 'error' && error && <p className="text-sm text-red-500 text-center py-4">{error}</p>}
+      {status === 'error' && error && (
+        <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-4 text-center text-sm text-red-400">
+          {error}
+        </div>
+      )}
     </div>
   );
 }

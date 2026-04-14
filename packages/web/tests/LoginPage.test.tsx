@@ -43,7 +43,7 @@ describe('LoginPage', () => {
 
   it('defaults to login mode', () => {
     renderPage();
-    expect(screen.getByRole('heading', { name: 'Log in' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Welcome back' })).toBeInTheDocument();
   });
 
   it('starts in signup mode when ?mode=signup', () => {
@@ -55,7 +55,7 @@ describe('LoginPage', () => {
   it('toggles between login and signup', async () => {
     renderPage();
     const user = userEvent.setup();
-    expect(screen.getByRole('heading', { name: 'Log in' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Welcome back' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Sign up' }));
     expect(screen.getByRole('heading', { name: 'Create account' })).toBeInTheDocument();

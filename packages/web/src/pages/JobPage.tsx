@@ -32,7 +32,6 @@ export default function JobPage() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  // Poll while streaming to detect completion if SSE doesn't connect
   useEffect(() => {
     if (!id || !shouldStream) return;
     const interval = setInterval(() => {
@@ -56,8 +55,9 @@ export default function JobPage() {
   if (loading) {
     return (
       <Layout>
-        <div className="mx-auto max-w-xl py-12 text-center">
-          <p className="text-sm text-slate-500">Loading job...</p>
+        <div className="mx-auto max-w-xl py-16 text-center">
+          <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-blue-500/20 border-t-blue-400" />
+          <p className="mt-3 text-sm text-zinc-500">Loading job...</p>
         </div>
       </Layout>
     );
@@ -67,9 +67,9 @@ export default function JobPage() {
     <Layout>
       <div className="mx-auto max-w-xl">
         {!isComplete && !isFailed && user?.email && (
-          <div className="mb-4 rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3 text-center">
-            <p className="text-sm text-indigo-700">
-              We&apos;ll email you at <strong>{user.email}</strong> when this crawl finishes.
+          <div className="mb-4 rounded-lg border border-blue-500/20 bg-blue-500/5 px-4 py-3 text-center">
+            <p className="text-sm text-blue-300">
+              We&apos;ll email you at <strong className="text-blue-200">{user.email}</strong> when this crawl finishes.
             </p>
           </div>
         )}
@@ -84,8 +84,8 @@ export default function JobPage() {
         )}
         {isComplete && id && <ResultView jobId={id} pagesFound={pagesFound} rootUrl={rootUrl} />}
         {isFailed && (
-          <div className="mt-4 rounded-lg bg-red-50 border border-red-100 px-4 py-3 text-center">
-            <p className="text-sm text-red-600">This crawl job failed. Please try again.</p>
+          <div className="mt-4 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-center">
+            <p className="text-sm text-red-400">This crawl job failed. Please try again.</p>
           </div>
         )}
       </div>

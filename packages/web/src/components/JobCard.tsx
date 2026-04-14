@@ -7,27 +7,51 @@ interface JobCardProps {
   createdAt: string;
 }
 
+const statusConfig: Record<string, { dot: string; text: string }> = {
+  pending: { dot: 'bg-yellow-400', text: 'text-yellow-400' },
+  running: { dot: 'bg-blue-400 animate-pulse', text: 'text-blue-400' },
+  completed: { dot: 'bg-emerald-400', text: 'text-emerald-400' },
+  failed: { dot: 'bg-red-400', text: 'text-red-400' },
+};
+
 export default function JobCard({ id, rootUrl, status, createdAt }: JobCardProps) {
-  const statusColor: Record<string, string> = {
-    pending: 'bg-yellow-100 text-yellow-700',
-    running: 'bg-blue-100 text-blue-700',
-    completed: 'bg-green-100 text-green-700',
-    failed: 'bg-red-100 text-red-700',
-  };
+  const cfg = statusConfig[status] ?? { dot: 'bg-zinc-500', text: 'text-zinc-500' };
+  const hostname = (() => {
+    try {
+      return new URL(rootUrl).hostname;
+    } catch {
+      return rootUrl;
+    }
+  })();
+
   return (
     <Link
       to={`/jobs/${id}`}
-      className="block rounded-xl border border-slate-200 bg-white p-5 hover:border-slate-300 hover:shadow-sm"
+      className="card-dark group block rounded-xl p-5 transition-all hover:border-zinc-700 hover:bg-zinc-800/50"
     >
-      <div className="flex items-center justify-between">
-        <p className="truncate max-w-md text-sm font-medium text-slate-900">{rootUrl}</p>
-        <span
-          className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColor[status] ?? 'bg-slate-100 text-slate-700'}`}
-        >
-          {status}
-        </span>
+      <div className="flex items-center gap-4">
+        <img
+          src={`https://www.google.com/s2/favicons?domain=${hostname}&sz=32`}
+          alt=""
+          className="h-8 w-8 rounded-md bg-zinc-800 p-1"
+          loading="lazy"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-zinc-200 group-hover:text-zinc-100">{rootUrl}</p>
+          <p className="mt-0.5 text-xs text-zinc-600">
+            {new Date(createdAt).toLocaleDateString(undefined, {
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+            })}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={`h-2 w-2 rounded-full ${cfg.dot}`} />
+          <span className={`text-xs font-medium ${cfg.text}`}>{status}</span>
+        </div>
       </div>
-      <p className="mt-1 text-xs text-slate-400">{new Date(createdAt).toLocaleDateString()}</p>
     </Link>
   );
 }

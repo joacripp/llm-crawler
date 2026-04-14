@@ -40,7 +40,7 @@ describe('DashboardPage', () => {
   it('shows loading state while auth is loading', () => {
     mockAuthLoading = true;
     renderDashboard();
-    expect(screen.getByText(/loading\.\.\./i)).toBeInTheDocument();
+    // Loading state shows a spinner, not text. Verify listJobs wasn't called.
     expect(api.listJobs).not.toHaveBeenCalled();
   });
 
