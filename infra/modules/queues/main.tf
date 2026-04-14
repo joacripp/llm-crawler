@@ -32,10 +32,10 @@ resource "aws_sqs_queue" "crawl_completed_dlq" {
 
 resource "aws_sqs_queue" "crawl_completed" {
   name                       = "${var.project}-${var.environment}-crawl-completed"
-  visibility_timeout_seconds = 300
+  visibility_timeout_seconds = 30  # Generator runs in <5s; short timeout so pagesEmitted sync retries happen quickly
 
   redrive_policy = jsonencode({
     deadLetterTargetArn = aws_sqs_queue.crawl_completed_dlq.arn
-    maxReceiveCount     = 3
+    maxReceiveCount     = 5  # pagesEmitted sync retries are expected, not exceptional
   })
 }
