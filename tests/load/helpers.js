@@ -1,5 +1,5 @@
 import http from 'k6/http';
-import { check } from 'k6';
+import { check, sleep } from 'k6';
 
 export const BASE_URL = __ENV.API_BASE || 'https://api.llmtxtgenerator.online';
 export const SITE_URL = __ENV.SITE_URL || 'https://llmtxtgenerator.online';
@@ -39,8 +39,7 @@ export function pollUntilDone(jar, jobId, timeoutMs) {
         return body;
       }
     }
-    // eslint-disable-next-line no-undef
-    __sleep(5);
+    sleep(5);
   }
   return { status: 'timeout' };
 }
