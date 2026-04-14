@@ -7,6 +7,7 @@ import {
   disconnectPrisma,
   disconnectRedis,
   createLogger,
+  sendJobCompletionEmail,
 } from '@llm-crawler/shared';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
@@ -79,6 +80,14 @@ export async function handler(event: SQSEvent): Promise<void> {
 
       const downloadUrl = `https://${bucket}.s3.amazonaws.com/${s3Key}`;
       await publishJobUpdate(jobId, { type: 'completed', downloadUrl });
+
+      // Email notification for logged-in users
+      if (job.userId) {
+        const user = await prisma.user.findUnique({ where: { id: job.userId }, select: { email: true } });
+        if (user?.email) {
+          await sendJobCompletionEmail({ to: user.email, jobId, rootUrl, pagesFound: pages.length });
+        }
+      }
     }
   } finally {
     await disconnectPrisma();

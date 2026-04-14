@@ -1,6 +1,7 @@
 import { useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
+import { useAuth } from '../context/AuthContext.js';
 import { useJobStream } from '../hooks/useJobStream.js';
 import Layout from '../components/Layout.js';
 import ProgressView from '../components/ProgressView.js';
@@ -13,6 +14,7 @@ export default function JobPage() {
   const [rootUrl, setRootUrl] = useState<string>();
   const [createdAt, setCreatedAt] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
   const shouldStream = initialStatus === 'running' || initialStatus === 'pending';
   const stream = useJobStream(shouldStream ? id! : null);
@@ -64,6 +66,13 @@ export default function JobPage() {
   return (
     <Layout>
       <div className="mx-auto max-w-xl">
+        {!isComplete && !isFailed && user?.email && (
+          <div className="mb-4 rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3 text-center">
+            <p className="text-sm text-indigo-700">
+              We&apos;ll email you at <strong>{user.email}</strong> when this crawl finishes.
+            </p>
+          </div>
+        )}
         {!isComplete && !isFailed && (
           <ProgressView
             pagesFound={pagesFound}
