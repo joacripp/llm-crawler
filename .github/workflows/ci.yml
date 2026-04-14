@@ -20,6 +20,49 @@ jobs:
       - run: npm run build
       - run: npm run test
 
+  schema-drift-check:
+    # Verify that the committed migrations folder matches the current schema.
+    # Catches missed `prisma migrate dev` runs after schema edits.
+    # Exit code 2 from `migrate diff --exit-code` means "diff is not empty" —
+    # which means someone changed schema.prisma without generating a migration.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # Two-step approach:
+      #   1. Apply migrations to a throwaway Postgres with `migrate deploy`
+      #   2. Diff that DB's live schema against prisma/schema.prisma
+      # Exit code 2 from `migrate diff --exit-code` means schema drift →
+      # someone edited schema.prisma without generating a migration.
+      - name: Apply migrations to shadow DB
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/shadow
+      - name: Detect schema drift
+        run: |
+          npx prisma migrate diff \
+            --from-config-datasource \
+            --to-schema ./prisma/schema.prisma \
+            --exit-code
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/shadow
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: shadow
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
   terraform-plan:
     runs-on: ubuntu-latest
     defaults:

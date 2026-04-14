@@ -3,7 +3,7 @@ FROM node:20-slim AS builder
 WORKDIR /app
 
 # Copy workspace root files
-COPY package.json package-lock.json turbo.json tsconfig.base.json ./
+COPY package.json package-lock.json turbo.json tsconfig.base.json prisma.config.ts ./
 COPY prisma ./prisma/
 
 # Copy only the packages we need
@@ -25,7 +25,7 @@ FROM node:20-slim
 
 WORKDIR /app
 
-COPY --from=builder /app/package.json /app/package-lock.json ./
+COPY --from=builder /app/package.json /app/package-lock.json /app/prisma.config.ts ./
 COPY --from=builder /app/packages/shared/package.json ./packages/shared/
 COPY --from=builder /app/packages/shared/dist ./packages/shared/dist/
 COPY --from=builder /app/packages/api/package.json ./packages/api/
@@ -35,4 +35,4 @@ COPY --from=builder /app/prisma ./prisma/
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "npx prisma db push --url $DATABASE_URL --accept-data-loss && node packages/api/dist/main.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node packages/api/dist/main.js"]
