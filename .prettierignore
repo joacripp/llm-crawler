@@ -6,5 +6,5 @@
 package-lock.json
 infra/.terraform/
 prisma/migrations/
-public/
+benchmark/
 TODO.md
