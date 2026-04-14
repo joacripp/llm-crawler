@@ -1,7 +1,8 @@
-import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { getPrisma } from '@llm-crawler/shared';
 import type { JobMessage } from '@llm-crawler/shared';
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
+import { verifyUrlDns } from './url-safety.js';
 
 interface CreateJobOptions {
   rootUrl: string;
@@ -18,6 +19,14 @@ export class JobsService {
   async createJob(options: CreateJobOptions) {
     const prisma = getPrisma();
     const { rootUrl, maxDepth = 10, maxPages = 1000, userId, anonSessionId } = options;
+
+    // DNS resolution check — catches DNS rebinding (evil.com → 169.254.169.254)
+    // and unreachable domains. Returns a user-friendly error message.
+    const dnsCheck = await verifyUrlDns(rootUrl);
+    if (!dnsCheck.ok) {
+      throw new BadRequestException(dnsCheck.reason);
+    }
+
     if (!userId && anonSessionId) {
       const existingCount = await prisma.job.count({ where: { anonSessionId } });
       if (existingCount >= 1)
