@@ -19,7 +19,7 @@ log() { echo "[load-test] $(date +%H:%M:%S) $*"; }
 # -----------------------------------------------------------------------
 # Determine which scenarios to run
 # -----------------------------------------------------------------------
-ALL_SCENARIOS=(01 02 03 04 05 06)
+ALL_SCENARIOS=(01 02 03 04 05 06 07)
 SCENARIOS=("${@:-${ALL_SCENARIOS[@]}}")
 
 SCENARIO_NAMES=(
@@ -29,6 +29,7 @@ SCENARIO_NAMES=(
   [04]="Large Crawl"
   [05]="Burst (50 jobs)"
   [06]="Connection Exhaustion"
+  [07]="High-Fanout Pages"
 )
 
 # -----------------------------------------------------------------------
