@@ -267,16 +267,36 @@ After every deploy, a smoke test job runs in CI (`scripts/smoke-test.sh`) that v
 
 Each crawl uses a fresh anonymous cookie jar and small bounds (`maxDepth=1, maxPages=3`) so it completes in minutes. Failure in any step fails the deploy workflow.
 
-### Missing: load and stress tests
+### Load and stress tests (k6)
 
-The current test suite validates correctness but not performance. Gaps:
+Six scenarios in `tests/load/` using [k6](https://grafana.com/docs/k6/), run against the live environment:
 
-- **No load testing** — how many concurrent crawls can the system handle before Lambda throttling, RDS connection exhaustion, or SQS backpressure kicks in?
-- **No stress testing** — what happens when a crawl hits a 10,000-page site? Memory profile of the crawler Lambda, consumer batch processing under sustained load, generator handling of large page sets
-- **No chaos testing** — what if Redis goes down mid-crawl? What if RDS has a maintenance window? The resurrection monitor should handle it, but we haven't verified
-- **No end-to-end integration tests** — the smoke test covers the happy path but not edge cases (SPA that changes structure mid-crawl, sites that rate-limit, sites with infinite pagination)
+| #   | Scenario              | What it measures                                                  |
+| --- | --------------------- | ----------------------------------------------------------------- |
+| 01  | API Throughput        | Concurrent job creation + polling latency (1→20 VUs, 7 min)       |
+| 02  | Pipeline Saturation   | 10 concurrent jobs, time-to-completion, bottleneck identification |
+| 03  | SSE Connections       | 50 concurrent polling streams, API memory under connection load   |
+| 04  | Large Crawl           | Single job with maxPages=5000, Lambda memory, resurrection flow   |
+| 05  | Burst                 | 50 jobs in 10 seconds, cold start behavior, DLQ spillover         |
+| 06  | Connection Exhaustion | 100 VUs rapid-firing at DB/Redis endpoints, connection limits     |
 
-These are the next priority for hardening the system before production traffic.
+```bash
+# Run all scenarios with CloudWatch report
+./tests/load/run-all.sh
+
+# Run specific scenarios
+./tests/load/run-all.sh 01 05
+
+# Run single scenario
+k6 run tests/load/04-large-crawl.js
+```
+
+The runner prints CloudWatch dashboard links at the start (watch live), then pulls Lambda invocations/errors, queue depths, DLQ counts, RDS connections, Redis connections, and ECS utilization after all tests complete.
+
+### Still missing
+
+- **Chaos testing** — what if Redis goes down mid-crawl? What if RDS has a maintenance window? The resurrection monitor should handle it, but we haven't verified.
+- **Edge-case integration tests** — SPA that changes structure mid-crawl, sites that rate-limit, sites with infinite pagination.
 
 ---
 

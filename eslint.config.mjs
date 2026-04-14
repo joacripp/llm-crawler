@@ -25,6 +25,7 @@ export default tseslint.config(
       '**/*.config.ts',
       '.husky/**',
       'benchmark/**',
+      'tests/load/**',
     ],
   },
 

@@ -7,3 +7,4 @@ dist/
 node_modules/
 *.tsbuildinfo
 TODO.md
+tests/load/reports/
