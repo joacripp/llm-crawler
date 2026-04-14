@@ -37,8 +37,9 @@ describe('types', () => {
     expect(event.newUrls).toHaveLength(1);
   });
 
-  it('JobCompletedEvent has jobId', () => {
-    const event: JobCompletedEvent = { jobId: 'abc-123' };
+  it('JobCompletedEvent has jobId and pagesEmitted', () => {
+    const event: JobCompletedEvent = { jobId: 'abc-123', pagesEmitted: 42 };
     expect(event.jobId).toBe('abc-123');
+    expect(event.pagesEmitted).toBe(42);
   });
 });

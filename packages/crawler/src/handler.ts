@@ -63,7 +63,7 @@ export async function handler(event: SQSEvent): Promise<void> {
 
   const onCompleted = async () => {
     log.info('Crawl complete', { jobId, pageCount, eventCount });
-    await emitter.emitJobCompleted({ jobId });
+    await emitter.emitJobCompleted({ jobId, pagesEmitted: pageCount });
   };
 
   try {

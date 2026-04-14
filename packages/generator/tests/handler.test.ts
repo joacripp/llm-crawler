@@ -48,17 +48,17 @@ describe('generator handler', () => {
   });
 
   it('reads rootUrl from job record', async () => {
-    await handler(makeSQSEvent({ jobId: 'job-1' }));
+    await handler(makeSQSEvent({ jobId: 'job-1', pagesEmitted: 2 }));
     expect(mockFindUnique).toHaveBeenCalledWith({ where: { id: 'job-1' } });
   });
 
   it('reads pages from Postgres', async () => {
-    await handler(makeSQSEvent({ jobId: 'job-1' }));
+    await handler(makeSQSEvent({ jobId: 'job-1', pagesEmitted: 2 }));
     expect(mockFindMany).toHaveBeenCalledWith({ where: { jobId: 'job-1' } });
   });
 
   it('uploads llms.txt and pages.json to S3', async () => {
-    await handler(makeSQSEvent({ jobId: 'job-1' }));
+    await handler(makeSQSEvent({ jobId: 'job-1', pagesEmitted: 2 }));
     expect(mockPutObject).toHaveBeenCalledTimes(2);
     const firstCall = mockPutObject.mock.calls[0][0];
     expect(firstCall.Key).toBe('results/job-1/llms.txt');
@@ -66,13 +66,13 @@ describe('generator handler', () => {
   });
 
   it('cleans up pages and discovered_urls', async () => {
-    await handler(makeSQSEvent({ jobId: 'job-1' }));
+    await handler(makeSQSEvent({ jobId: 'job-1', pagesEmitted: 2 }));
     expect(mockDeleteManyPages).toHaveBeenCalledWith({ where: { jobId: 'job-1' } });
     expect(mockDeleteManyDiscovered).toHaveBeenCalledWith({ where: { jobId: 'job-1' } });
   });
 
   it('updates job status to completed with s3_key', async () => {
-    await handler(makeSQSEvent({ jobId: 'job-1' }));
+    await handler(makeSQSEvent({ jobId: 'job-1', pagesEmitted: 2 }));
     expect(mockUpdateJob).toHaveBeenCalledWith({
       where: { id: 'job-1' },
       data: { status: 'completed', s3Key: 'results/job-1/llms.txt', pagesFound: 2 },
@@ -80,19 +80,41 @@ describe('generator handler', () => {
   });
 
   it('publishes completion to Redis', async () => {
-    await handler(makeSQSEvent({ jobId: 'job-1' }));
+    await handler(makeSQSEvent({ jobId: 'job-1', pagesEmitted: 2 }));
     expect(publishJobUpdate).toHaveBeenCalledWith('job-1', expect.objectContaining({ type: 'completed' }));
   });
 
-  describe('race guard: no pages persisted yet', () => {
-    it('throws (so SQS retries) instead of marking the job complete with empty data', async () => {
+  describe('race guard: consumer has not caught up', () => {
+    it('throws when zero pages persisted (pagesEmitted provided)', async () => {
       mockFindMany.mockResolvedValueOnce([]);
-      await expect(handler(makeSQSEvent({ jobId: 'job-1' }))).rejects.toThrow(/likely raced consumer/);
+      await expect(handler(makeSQSEvent({ jobId: 'job-1', pagesEmitted: 3 }))).rejects.toThrow(/0\/3 pages persisted/);
+    });
+
+    it('throws when partial pages persisted (not all events consumed yet)', async () => {
+      mockFindMany.mockResolvedValueOnce([mockPages[0]]); // 1 of 5
+      await expect(handler(makeSQSEvent({ jobId: 'job-1', pagesEmitted: 5 }))).rejects.toThrow(/1\/5 pages persisted/);
+    });
+
+    it('proceeds when all expected pages are persisted', async () => {
+      // 2 pages, pagesEmitted=2 → should succeed
+      await handler(makeSQSEvent({ jobId: 'job-1', pagesEmitted: 2 }));
+      expect(mockPutObject).toHaveBeenCalledTimes(2);
+    });
+
+    it('proceeds when more pages than expected (extra from prior invocations)', async () => {
+      // 2 pages, pagesEmitted=1 → should succeed (more is fine)
+      await handler(makeSQSEvent({ jobId: 'job-1', pagesEmitted: 1 }));
+      expect(mockPutObject).toHaveBeenCalledTimes(2);
+    });
+
+    it('falls back to requiring >= 1 page when pagesEmitted is absent (legacy/monitor events)', async () => {
+      mockFindMany.mockResolvedValueOnce([]);
+      await expect(handler(makeSQSEvent({ jobId: 'job-1' }))).rejects.toThrow(/0\/1 pages persisted/);
     });
 
     it('does not delete pages or mark completed when racing consumer', async () => {
       mockFindMany.mockResolvedValueOnce([]);
-      await expect(handler(makeSQSEvent({ jobId: 'job-1' }))).rejects.toThrow();
+      await expect(handler(makeSQSEvent({ jobId: 'job-1', pagesEmitted: 3 }))).rejects.toThrow();
       expect(mockDeleteManyPages).not.toHaveBeenCalled();
       expect(mockDeleteManyDiscovered).not.toHaveBeenCalled();
       expect(mockUpdateJob).not.toHaveBeenCalled();

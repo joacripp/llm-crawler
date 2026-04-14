@@ -38,7 +38,7 @@ export async function handler(): Promise<void> {
             MessageBody: JSON.stringify({
               source: 'llm-crawler',
               'detail-type': 'job.completed',
-              detail: { jobId: job.id },
+              detail: { jobId: job.id, pagesEmitted: visited.length },
             }),
           }),
         );

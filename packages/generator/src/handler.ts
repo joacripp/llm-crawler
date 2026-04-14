@@ -21,23 +21,33 @@ export async function handler(event: SQSEvent): Promise<void> {
     for (const record of event.Records) {
       const envelope = JSON.parse(record.body);
       const detail: JobCompletedEvent = envelope.detail;
-      const { jobId } = detail;
-      log.info('Starting generation', { jobId });
+      const { jobId, pagesEmitted } = detail;
+      log.info('Starting generation', { jobId, pagesEmitted });
 
       const job = await prisma.job.findUniqueOrThrow({ where: { id: jobId } });
       const rootUrl = job.rootUrl;
 
       const pages = await prisma.page.findMany({ where: { jobId } });
-      log.info('Pages loaded', { jobId, rootUrl, pageCount: pages.length });
+      log.info('Pages loaded', { jobId, rootUrl, pageCount: pages.length, pagesEmitted });
 
-      // Race guard: page.crawled events flow through a different SQS queue than
-      // job.completed, so we can be invoked before the consumer has persisted
-      // any pages. If we proceeded we'd produce an empty llms.txt and delete
-      // the (still-arriving) page rows. Throw so SQS retries after the
-      // visibility timeout — by then the consumer should have caught up.
-      if (pages.length === 0) {
-        log.warn('No pages persisted yet — throwing to let SQS retry', { jobId });
-        throw new Error(`No pages found for job ${jobId} — generator likely raced consumer; SQS will retry`);
+      // Race guard: page.crawled events flow through a different SQS queue
+      // than job.completed, so the generator can run before the consumer has
+      // persisted all pages. The crawler passes pagesEmitted — the exact
+      // number of page.crawled events it sent. We wait (via SQS retry) until
+      // the consumer has caught up.
+      //
+      // Fallback for older events / monitor-synthesised completions that
+      // don't carry pagesEmitted: require at least 1 page.
+      const expectedPages = pagesEmitted ?? 1;
+      if (pages.length < expectedPages) {
+        log.warn('Consumer has not caught up yet — throwing to let SQS retry', {
+          jobId,
+          persisted: pages.length,
+          expected: expectedPages,
+        });
+        throw new Error(
+          `Only ${pages.length}/${expectedPages} pages persisted for job ${jobId} — generator raced consumer; SQS will retry`,
+        );
       }
 
       const pageData: PageData[] = pages.map((p) => ({

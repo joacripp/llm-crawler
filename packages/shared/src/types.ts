@@ -26,6 +26,9 @@ export interface PageCrawledEvent {
 
 export interface JobCompletedEvent {
   jobId: string;
+  /** Number of page.crawled events the crawler emitted. The generator
+   *  waits until this many pages are persisted before building llms.txt. */
+  pagesEmitted: number;
 }
 
 export interface RedisProgressMessage {

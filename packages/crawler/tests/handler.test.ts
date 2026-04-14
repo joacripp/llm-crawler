@@ -54,9 +54,9 @@ describe('handler', () => {
     expect(mockEmitPageCrawled.mock.calls[0][0].jobId).toBe('abc-123');
   });
 
-  it('emits job.completed when crawl finishes', async () => {
+  it('emits job.completed with pagesEmitted count', async () => {
     await handler(makeSQSEvent({ jobId: 'abc-123', urls: ['https://example.com/'] }));
-    expect(mockEmitJobCompleted).toHaveBeenCalledWith({ jobId: 'abc-123' });
+    expect(mockEmitJobCompleted).toHaveBeenCalledWith({ jobId: 'abc-123', pagesEmitted: 1 });
   });
 
   it('passes visited URLs on resume', async () => {
