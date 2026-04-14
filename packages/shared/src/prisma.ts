@@ -26,8 +26,14 @@ export async function disconnectPrisma(): Promise<void> {
 export async function pingPrisma(): Promise<boolean> {
   try {
     const client = getPrisma();
-    await client.$queryRawUnsafe('SELECT 1');
-    return true;
+    // Verify both reachability AND that our schema is applied.
+    // to_regclass returns null when the table doesn't exist — catches the case
+    // where DB is up but migrations haven't run yet (e.g. fresh container
+    // still starting up, or a botched migrate deploy).
+    const rows = await client.$queryRawUnsafe<Array<{ table: string | null }>>(
+      `SELECT to_regclass('public.jobs')::text AS "table"`,
+    );
+    return rows[0]?.table === 'jobs';
   } catch {
     return false;
   }
