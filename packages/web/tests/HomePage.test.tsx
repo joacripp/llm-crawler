@@ -47,12 +47,12 @@ describe('HomePage', () => {
 
     renderHome();
     const user = userEvent.setup();
-    await user.type(screen.getByPlaceholderText('https://example.com'), 'https://example.com');
+    await user.type(screen.getByPlaceholderText('example.com'), 'example.com');
     await user.click(screen.getByRole('button', { name: /generate llms\.txt/i }));
 
     await waitFor(() =>
       expect(api.createJob).toHaveBeenCalledWith({
-        url: 'https://example.com',
+        url: 'example.com',
         maxDepth: 10,
         maxPages: 1000,
       }),
@@ -65,7 +65,7 @@ describe('HomePage', () => {
 
     renderHome();
     const user = userEvent.setup();
-    await user.type(screen.getByPlaceholderText('https://example.com'), 'https://example.com');
+    await user.type(screen.getByPlaceholderText('example.com'), 'example.com');
     await user.click(screen.getByRole('button', { name: /generate llms\.txt/i }));
 
     await waitFor(() => expect(screen.getByText('Create an account')).toBeInTheDocument());
@@ -77,7 +77,7 @@ describe('HomePage', () => {
 
     renderHome();
     const user = userEvent.setup();
-    await user.type(screen.getByPlaceholderText('https://example.com'), 'https://example.com');
+    await user.type(screen.getByPlaceholderText('example.com'), 'example.com');
     await user.click(screen.getByRole('button', { name: /generate llms\.txt/i }));
 
     await waitFor(() => expect(screen.getByText('Something went wrong')).toBeInTheDocument());
@@ -99,7 +99,7 @@ describe('HomePage', () => {
     renderHome();
     const user = userEvent.setup();
 
-    await user.type(screen.getByPlaceholderText('https://example.com'), 'https://example.com');
+    await user.type(screen.getByPlaceholderText('example.com'), 'example.com');
     await user.click(screen.getByRole('button', { name: /advanced options/i }));
 
     // Labels in this form aren't htmlFor-bound; locate by current value instead.
@@ -114,7 +114,7 @@ describe('HomePage', () => {
 
     await waitFor(() =>
       expect(api.createJob).toHaveBeenCalledWith({
-        url: 'https://example.com',
+        url: 'example.com',
         maxDepth: 5,
         maxPages: 100,
       }),
