@@ -43,6 +43,8 @@ model Job {
   s3Key          String?  @map("s3_key")
   pagesFound     Int      @default(0) @map("pages_found")
   invocations    Int      @default(0)
+  pagesAtLastInvocation Int @default(0) @map("pages_at_last_invocation")
+  noProgressStrikes     Int @default(0) @map("no_progress_strikes")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
   user        User?        @relation(fields: [userId], references: [id])
