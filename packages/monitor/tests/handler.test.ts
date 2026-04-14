@@ -1,10 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const staleJob = { id: 'stale-1', rootUrl: 'https://example.com', invocations: 2, maxDepth: 3, maxPages: 200 };
+const staleJob = {
+  id: 'stale-1',
+  rootUrl: 'https://example.com',
+  invocations: 2,
+  maxDepth: 3,
+  maxPages: 200,
+  pagesAtLastInvocation: 0,
+  noProgressStrikes: 0,
+};
 const mockFindManyJobs = vi.fn().mockResolvedValue([staleJob]);
 const mockFindManyPages = vi
   .fn()
   .mockResolvedValue([{ url: 'https://example.com/' }, { url: 'https://example.com/about' }]);
+const mockCountPages = vi.fn().mockResolvedValue(2);
 const mockFindManyDiscovered = vi
   .fn()
   .mockResolvedValue([
@@ -21,7 +30,7 @@ vi.mock('@llm-crawler/shared', async (importOriginal) => {
     ...actual,
     getPrisma: vi.fn(() => ({
       job: { findMany: mockFindManyJobs, update: mockUpdateJob },
-      page: { findMany: mockFindManyPages },
+      page: { findMany: mockFindManyPages, count: mockCountPages },
       discoveredUrl: { findMany: mockFindManyDiscovered },
     })),
     disconnectPrisma: vi.fn().mockResolvedValue(undefined),
@@ -70,11 +79,16 @@ describe('monitor handler', () => {
     expect(body.visited).toContain('https://example.com/about');
   });
 
-  it('increments job invocations', async () => {
+  it('increments job invocations and stores pagesAtLastInvocation', async () => {
     await handler();
     expect(mockUpdateJob).toHaveBeenCalledWith({
       where: { id: 'stale-1' },
-      data: { invocations: 3, status: 'pending' },
+      data: {
+        invocations: 3,
+        status: 'pending',
+        pagesAtLastInvocation: 2,
+        noProgressStrikes: 0,
+      },
     });
   });
 
@@ -94,5 +108,49 @@ describe('monitor handler', () => {
     expect(mockSendMessage).toHaveBeenCalledOnce();
     const body = JSON.parse(mockSendMessage.mock.calls[0][0].MessageBody);
     expect(body['detail-type']).toBe('job.completed');
+  });
+
+  describe('progress-based failure detection', () => {
+    it('increments no-progress strikes when page count has not increased', async () => {
+      // Job had 2 pages at last invocation, still has 2 → no progress
+      mockFindManyJobs.mockResolvedValueOnce([{ ...staleJob, invocations: 3, pagesAtLastInvocation: 2 }]);
+      mockCountPages.mockResolvedValueOnce(2);
+      await handler();
+      const updateData = mockUpdateJob.mock.calls[0][0].data;
+      expect(updateData.noProgressStrikes).toBe(1);
+    });
+
+    it('resets strikes when progress is detected', async () => {
+      mockFindManyJobs.mockResolvedValueOnce([
+        { ...staleJob, invocations: 3, pagesAtLastInvocation: 2, noProgressStrikes: 1 },
+      ]);
+      // Now has 5 pages → progress
+      mockCountPages.mockResolvedValueOnce(5);
+      await handler();
+      const updateData = mockUpdateJob.mock.calls[0][0].data;
+      expect(updateData.noProgressStrikes).toBe(0);
+      expect(updateData.pagesAtLastInvocation).toBe(5);
+    });
+
+    it('marks job as failed after 2 consecutive no-progress strikes', async () => {
+      mockFindManyJobs.mockResolvedValueOnce([
+        { ...staleJob, invocations: 3, pagesAtLastInvocation: 2, noProgressStrikes: 1 },
+      ]);
+      // Still 2 → second strike → fail
+      mockCountPages.mockResolvedValueOnce(2);
+      await handler();
+      expect(mockUpdateJob).toHaveBeenCalledWith({ where: { id: 'stale-1' }, data: { status: 'failed' } });
+      expect(mockSendMessage).not.toHaveBeenCalled();
+    });
+
+    it('does not check progress on first invocation (invocations === 0)', async () => {
+      mockFindManyJobs.mockResolvedValueOnce([{ ...staleJob, invocations: 0, pagesAtLastInvocation: 0 }]);
+      mockCountPages.mockResolvedValueOnce(0);
+      await handler();
+      // Should re-enqueue, not fail (first attempt hasn't happened yet)
+      const updateData = mockUpdateJob.mock.calls[0][0].data;
+      expect(updateData.status).toBe('pending');
+      expect(updateData.noProgressStrikes).toBe(0);
+    });
   });
 });
