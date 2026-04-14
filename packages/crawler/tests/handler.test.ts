@@ -27,6 +27,30 @@ vi.mock('../src/spa-detector.js', () => ({
   isSpa: vi.fn().mockReturnValue(false),
 }));
 
+const mockCrawlSpa = vi.fn().mockImplementation(async (config) => {
+  await config.onPageCrawled({
+    jobId: '',
+    url: config.rootUrl,
+    title: 'SPA Home',
+    description: '',
+    depth: 0,
+    newUrls: [],
+  });
+  await config.onCompleted();
+});
+vi.mock('../src/spa-crawler.js', () => ({ crawlSpa: mockCrawlSpa }));
+
+const mockBrowser = { close: vi.fn().mockResolvedValue(undefined) };
+vi.mock('playwright-core', () => ({
+  chromium: { launch: vi.fn().mockResolvedValue(mockBrowser) },
+}));
+vi.mock('@sparticuz/chromium', () => ({
+  default: {
+    executablePath: vi.fn().mockResolvedValue('/tmp/chromium'),
+    args: ['--no-sandbox', '--no-zygote'],
+  },
+}));
+
 // Must import AFTER mocks are set up
 const { handler } = await import('../src/handler.js');
 
@@ -67,15 +91,14 @@ describe('handler', () => {
     expect(config.visited).toEqual(['https://example.com/']);
   });
 
-  it('skips SPA detection and attempts browser path when forceBrowser is set', async () => {
+  it('skips SPA detection and uses Playwright when forceBrowser is set', async () => {
     const { isSpa } = await import('../src/spa-detector.js');
-    // forceBrowser=true triggers Playwright import which isn't available in test env.
-    // The handler will throw — that's expected. The key assertion is SPA detection was skipped.
-    await expect(
-      handler(makeSQSEvent({ jobId: 'abc-123', urls: ['https://example.com/'], forceBrowser: true })),
-    ).rejects.toThrow();
+    await handler(makeSQSEvent({ jobId: 'abc-123', urls: ['https://example.com/'], forceBrowser: true }));
+    // SPA detection should be skipped entirely
     expect(isSpa).not.toHaveBeenCalled();
-    // crawl() should NOT have been called (browser path, not cheerio path)
+    // Should use crawlSpa (browser path), not crawl (Cheerio path)
     expect(mockCrawl).not.toHaveBeenCalled();
+    expect(mockCrawlSpa).toHaveBeenCalledOnce();
+    expect(mockCrawlSpa.mock.calls[0][0].rootUrl).toBe('https://example.com/');
   });
 });
