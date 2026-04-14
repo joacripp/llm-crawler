@@ -23,23 +23,24 @@ export async function handler(event: SQSEvent): Promise<SQSBatchResponse> {
             create: { jobId, url, title, description, depth },
             update: { title, description, depth },
           });
-          for (const discoveredUrl of newUrls) {
-            await tx.discoveredUrl.upsert({
-              where: { jobId_url: { jobId, url: discoveredUrl } },
-              create: { jobId, url: discoveredUrl },
-              update: {},
+
+          // Batch insert discovered URLs instead of looping upserts.
+          // Pages with 200+ outbound links caused sequential upserts to
+          // exceed Prisma's default 5s transaction timeout.
+          // createMany + skipDuplicates is one round trip regardless of count.
+          if (newUrls.length > 0) {
+            await tx.discoveredUrl.createMany({
+              data: newUrls.map((discoveredUrl) => ({ jobId, url: discoveredUrl })),
+              skipDuplicates: true,
             });
           }
-          // Only transition pending → running. Never clobber completed/failed:
-          // page.crawled events can arrive after the generator has already marked
-          // the job completed (different SQS queues, no ordering), and resetting
-          // to 'running' would cause the resurrection monitor to re-enqueue.
+
+          // Only transition pending → running. Never clobber completed/failed.
           await tx.job.updateMany({
             where: { id: jobId, status: 'pending' },
             data: { updatedAt: new Date(), status: 'running' },
           });
-          // Always bump updatedAt on running jobs so the resurrection monitor
-          // sees fresh activity. Skipped for completed/failed jobs.
+          // Bump updatedAt on running jobs for the resurrection monitor.
           await tx.job.updateMany({
             where: { id: jobId, status: 'running' },
             data: { updatedAt: new Date() },

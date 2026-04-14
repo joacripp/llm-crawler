@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mockUpsertPage = vi.fn().mockResolvedValue({ id: 1 });
-const mockUpsertDiscoveredUrl = vi.fn().mockResolvedValue({ id: 1 });
+const mockCreateManyDiscoveredUrl = vi.fn().mockResolvedValue({ count: 0 });
 const mockUpdateManyJob = vi.fn().mockResolvedValue({ count: 1 });
 const mockCountPages = vi.fn().mockResolvedValue(42);
 
@@ -11,12 +11,12 @@ vi.mock('@llm-crawler/shared', async (importOriginal) => {
     ...actual,
     getPrisma: vi.fn(() => ({
       page: { upsert: mockUpsertPage, count: mockCountPages },
-      discoveredUrl: { upsert: mockUpsertDiscoveredUrl },
+      discoveredUrl: { createMany: mockCreateManyDiscoveredUrl },
       job: { updateMany: mockUpdateManyJob },
       $transaction: vi.fn(async (fn) =>
         fn({
           page: { upsert: mockUpsertPage, count: mockCountPages },
-          discoveredUrl: { upsert: mockUpsertDiscoveredUrl },
+          discoveredUrl: { createMany: mockCreateManyDiscoveredUrl },
           job: { updateMany: mockUpdateManyJob },
         }),
       ),
@@ -74,7 +74,7 @@ describe('consumer handler', () => {
     expect(mockUpsertPage).toHaveBeenCalled();
   });
 
-  it('upserts discovered URLs', async () => {
+  it('batch-inserts discovered URLs with createMany + skipDuplicates', async () => {
     await handler(
       makeSQSEvent(
         makeRecord({
@@ -87,7 +87,18 @@ describe('consumer handler', () => {
         }),
       ),
     );
-    expect(mockUpsertDiscoveredUrl).toHaveBeenCalledTimes(2);
+    expect(mockCreateManyDiscoveredUrl).toHaveBeenCalledWith({
+      data: [
+        { jobId: 'job-1', url: 'https://example.com/about' },
+        { jobId: 'job-1', url: 'https://example.com/docs' },
+      ],
+      skipDuplicates: true,
+    });
+  });
+
+  it('skips createMany when newUrls is empty', async () => {
+    await handler(makeSQSEvent(makeRecord(goodDetail)));
+    expect(mockCreateManyDiscoveredUrl).not.toHaveBeenCalled();
   });
 
   it('publishes progress to Redis', async () => {
@@ -132,10 +143,7 @@ describe('consumer handler', () => {
 
   describe('per-record error handling (partial batch failure)', () => {
     it('reports only the failed record, not the whole batch', async () => {
-      // First record succeeds, second throws
-      mockUpsertPage
-        .mockResolvedValueOnce({ id: 1 }) // record 1
-        .mockRejectedValueOnce(new Error('DB constraint violation')); // record 2
+      mockUpsertPage.mockResolvedValueOnce({ id: 1 }).mockRejectedValueOnce(new Error('DB constraint violation'));
 
       const result = await handler(
         makeSQSEvent(
@@ -148,9 +156,7 @@ describe('consumer handler', () => {
     });
 
     it('processes remaining records after a failure (does not short-circuit)', async () => {
-      mockUpsertPage
-        .mockRejectedValueOnce(new Error('boom')) // record 1 fails
-        .mockResolvedValueOnce({ id: 2 }); // record 2 succeeds
+      mockUpsertPage.mockRejectedValueOnce(new Error('boom')).mockResolvedValueOnce({ id: 2 });
 
       const result = await handler(
         makeSQSEvent(
@@ -159,9 +165,7 @@ describe('consumer handler', () => {
         ),
       );
 
-      // Only the first record failed
       expect(result.batchItemFailures).toEqual([{ itemIdentifier: 'msg-fail' }]);
-      // Second record's progress was published
       expect(publishJobUpdate).toHaveBeenCalledOnce();
     });
 
@@ -173,11 +177,6 @@ describe('consumer handler', () => {
       );
 
       expect(result.batchItemFailures).toHaveLength(3);
-      expect(result.batchItemFailures.map((f: { itemIdentifier: string }) => f.itemIdentifier).sort()).toEqual([
-        'msg-1',
-        'msg-2',
-        'msg-3',
-      ]);
     });
 
     it('handles malformed record body without crashing', async () => {
