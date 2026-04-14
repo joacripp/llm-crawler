@@ -43,9 +43,10 @@ export async function crawl(config: CrawlConfig): Promise<void> {
       currentLevel.map((url) =>
         limit(async () => {
           if (pageCount >= maxPages) return;
-          pageCount++;
           const html = useBrowser && browser ? await fetchWithBrowser(browser, url) : await fetchWithAxios(url);
           if (!html) return;
+          if (pageCount >= maxPages) return; // re-check after async fetch
+          pageCount++;
           const pageData = extractPageData(html, url, depth);
           const links = extractLinks(html, url);
           const newUrls = links.filter((link) => !visited.has(link));
