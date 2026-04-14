@@ -41,31 +41,40 @@ Full benchmark data: [`docs/benchmark_cheerio_vs_playwright.md`](docs/benchmark_
 
 ## Architecture
 
+```mermaid
+graph TB
+    User([User]) --> CF[CloudFront]
+    CF --> SPA[React SPA<br/>S3]
+    CF --> API[NestJS API<br/>ECS Fargate]
+    API --> JobsQ[SQS<br/>jobs queue]
+    JobsQ --> Crawler[Crawler Lambda<br/>Cheerio / Playwright]
+    Crawler --> EB[EventBridge]
+    EB --> PagesQ[SQS<br/>pages queue]
+    EB --> CompQ[SQS<br/>completed queue]
+    PagesQ --> Consumer[Consumer Lambda]
+    CompQ --> Generator[Generator Lambda]
+    Consumer --> PG[(Postgres<br/>RDS)]
+    Consumer --> Redis[(Redis<br/>ElastiCache)]
+    Generator --> S3[(S3<br/>results)]
+    Generator --> PG
+    Generator --> Redis
+    Generator --> SES[SES<br/>email]
+    Redis --> API
+    API --> |SSE| CF
+    Monitor[Monitor Lambda<br/>cron 2min] --> PG
+    Monitor --> JobsQ
+
+    style Crawler fill:#3b82f6,color:#fff
+    style Consumer fill:#6366f1,color:#fff
+    style Generator fill:#6366f1,color:#fff
+    style Monitor fill:#6366f1,color:#fff
+    style API fill:#10b981,color:#fff
+    style SPA fill:#10b981,color:#fff
 ```
-User → CloudFront → NestJS API → SQS (jobs) → Crawler Lambda
-                                                    ↓
-                                              EventBridge
-                                              ↓           ↓
-                                    SQS (pages)    SQS (completed)
-                                         ↓              ↓
-                                  Consumer Lambda   Generator Lambda
-                                    ↓       ↓           ↓       ↓ → SES email
-                                 Postgres  Redis       S3     Redis
-                                              ↓                 ↓
-                                         NestJS SSE → Frontend
-```
 
-### Key decisions
+Event-driven with checkpoint/resume. Each page is persisted individually as it's crawled. A resurrection monitor detects stale jobs and re-enqueues them. The generator waits for all pages via `pagesEmitted` synchronization before building the final llms.txt.
 
-**Event-driven with checkpoint/resume.** A single crawl can run for 15+ minutes and consume hundreds of MBs. Rather than a monolithic backend that crashes under load, the architecture decouples crawling into Lambda workers with continuous checkpointing to Postgres.
-
-**Lambda hard-kill resilience.** Lambda does NOT send SIGTERM on timeout — it kills the process instantly. So the architecture assumes the worker can die at any moment. Each page is persisted individually as it's crawled. A resurrection monitor (cron every 2 min) detects stale jobs and re-enqueues them with the remaining work.
-
-**Generator/consumer sync via `pagesEmitted`.** The crawler passes the exact page count to the `job.completed` event. The generator waits (via SQS retry) until all pages are persisted before building llms.txt. This prevents partial results from race conditions between the two SQS queues.
-
-**Progress-based failure detection.** The monitor tracks page count between invocations. Two consecutive retries with zero new pages → mark the job as failed (~6 min instead of ~30 min with a simple retry counter).
-
-**Per-record error handling.** The consumer returns `SQSBatchResponse` with `ReportBatchItemFailures` — one bad record in a batch of 10 doesn't DLQ the other 9.
+**[Detailed architecture documentation →](docs/architecture.md)** covers job lifecycle, database schema, queue topology, race condition analysis, failure modes, and the resurrection flow.
 
 ### Packages
 
@@ -246,6 +255,18 @@ All tests are unit tests with mocked dependencies using Vitest. Coverage by area
 | **Consumer**        | 11    | Page persistence, job status transitions, partial batch failure reporting                          |
 | **Monitor**         | 10    | Stale job detection, re-enqueue, progress-based failure, max invocations                           |
 
+### Smoke tests (post-deploy E2E)
+
+After every deploy, a smoke test job runs in CI (`scripts/smoke-test.sh`) that verifies the full system end-to-end against the live environment:
+
+1. **Liveness** — `GET /api/health` returns `200` + `status=ok`
+2. **Readiness** — `GET /api/health/ready` confirms DB + Redis + schema are up
+3. **SPA shell** — CloudFront returns `index.html` with `#root` element
+4. **Cheerio crawl** — creates a job for `configcat.com` (server-rendered, 3 pages), polls until completed, verifies llms.txt content starts with `# `
+5. **Playwright crawl** — creates a job for `blut.studio` (SPA, 3 pages), same verification
+
+Each crawl uses a fresh anonymous cookie jar and small bounds (`maxDepth=1, maxPages=3`) so it completes in minutes. Failure in any step fails the deploy workflow.
+
 ### Missing: load and stress tests
 
 The current test suite validates correctness but not performance. Gaps:
@@ -303,23 +324,3 @@ Runs before every `git push`. Catches build/test failures before CI.
 
 - `*.{ts,tsx,js,mjs}` → `eslint --fix` + `prettier --write`
 - `*.{json,md,yml,yaml}` → `prettier --write`
-
----
-
-## Built with Claude
-
-This project was built collaboratively with [Claude Code](https://claude.ai/claude-code) (Claude Opus 4.6). The entire codebase — from architecture design to implementation, testing, deployment, monitoring, and this README — was developed through a conversational workflow.
-
-Highlights of the collaboration:
-
-- **Architecture design** — evaluated event-driven vs monolithic, chose Lambda workers with checkpoint/resume based on crawl duration and memory constraints
-- **Benchmark-driven decisions** — ran Cheerio vs Playwright benchmarks across 9 real sites before choosing the dual-engine approach
-- **Production debugging** — diagnosed a generator/consumer race condition by tracing CloudWatch logs, identified the root cause (different SQS queue ordering), and shipped a fix with `pagesEmitted` synchronization
-- **Infrastructure as code** — all AWS resources managed via Terraform modules, deployed via GitHub Actions
-- **Iterative improvement** — 25 PRs merged in a single development session, each with tests, CI validation, and incremental deployment
-
----
-
-## License
-
-Private repository. All rights reserved.
