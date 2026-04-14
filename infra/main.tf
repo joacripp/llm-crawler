@@ -112,6 +112,12 @@ module "api" {
   hosted_zone_id           = var.hosted_zone_id
 }
 
+module "ses" {
+  source         = "./modules/ses"
+  domain         = var.domain
+  hosted_zone_id = var.hosted_zone_id
+}
+
 module "monitoring" {
   source      = "./modules/monitoring"
   environment = var.environment
