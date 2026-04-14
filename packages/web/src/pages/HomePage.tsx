@@ -7,8 +7,8 @@ import Layout from '../components/Layout.js';
 
 export default function HomePage() {
   const [url, setUrl] = useState('');
-  const [maxDepth, setMaxDepth] = useState(3);
-  const [maxPages, setMaxPages] = useState(200);
+  const [maxDepth, setMaxDepth] = useState(10);
+  const [maxPages, setMaxPages] = useState(1000);
   const [showOptions, setShowOptions] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
@@ -103,7 +103,7 @@ export default function HomePage() {
                     value={maxDepth}
                     onChange={(e) => setMaxDepth(+e.target.value)}
                     min={1}
-                    max={10}
+                    max={100}
                     className="input-dark"
                   />
                 </div>

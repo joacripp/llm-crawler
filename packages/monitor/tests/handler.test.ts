@@ -4,8 +4,8 @@ const staleJob = {
   id: 'stale-1',
   rootUrl: 'https://example.com',
   invocations: 2,
-  maxDepth: 3,
-  maxPages: 200,
+  maxDepth: 10,
+  maxPages: 1000,
   pagesAtLastInvocation: 0,
   noProgressStrikes: 0,
 };
