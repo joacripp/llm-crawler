@@ -21,13 +21,10 @@ export default tseslint.config(
       '**/coverage/**',
       'infra/**',
       'packages/web/dist/**',
-      'public/**',
       '**/*.config.js',
       '**/*.config.ts',
       '.husky/**',
-      // Root `src/` is original prototype files (TODO.md tracks their removal).
-      // Not part of any package, not built, not shipped.
-      'src/**',
+      'benchmark/**',
     ],
   },
 
