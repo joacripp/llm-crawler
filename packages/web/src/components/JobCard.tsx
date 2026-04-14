@@ -5,6 +5,7 @@ interface JobCardProps {
   rootUrl: string;
   status: string;
   createdAt: string;
+  highlight?: boolean;
 }
 
 const statusConfig: Record<string, { dot: string; text: string }> = {
@@ -14,7 +15,7 @@ const statusConfig: Record<string, { dot: string; text: string }> = {
   failed: { dot: 'bg-red-400', text: 'text-red-400' },
 };
 
-export default function JobCard({ id, rootUrl, status, createdAt }: JobCardProps) {
+export default function JobCard({ id, rootUrl, status, createdAt, highlight }: JobCardProps) {
   const cfg = statusConfig[status] ?? { dot: 'bg-zinc-500', text: 'text-zinc-500' };
   const hostname = (() => {
     try {
@@ -27,7 +28,7 @@ export default function JobCard({ id, rootUrl, status, createdAt }: JobCardProps
   return (
     <Link
       to={`/jobs/${id}`}
-      className="card-dark group block rounded-xl p-5 transition-all hover:border-zinc-700 hover:bg-zinc-800/50"
+      className={`card-dark group block rounded-xl p-5 transition-all hover:border-zinc-700 hover:bg-zinc-800/50 ${highlight ? 'ring-1 ring-emerald-500/50 animate-pulse' : ''}`}
     >
       <div className="flex items-center gap-4">
         <img
