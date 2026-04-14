@@ -84,8 +84,13 @@ resource "aws_ecs_task_definition" "api" {
       { name = "REDIS_URL",      value = var.redis_url },
       { name = "JOBS_QUEUE_URL", value = var.jobs_queue_url },
       { name = "S3_BUCKET",      value = var.results_bucket },
-      { name = "JWT_SECRET",     value = var.jwt_secret },
-      { name = "NODE_ENV",       value = "production" },
+      { name = "JWT_SECRET",           value = var.jwt_secret },
+      { name = "NODE_ENV",             value = "production" },
+      { name = "GOOGLE_CLIENT_ID",      value = var.google_client_id },
+      { name = "GOOGLE_CLIENT_SECRET", value = var.google_client_secret },
+      { name = "GH_OAUTH_CLIENT_ID",      value = var.gh_oauth_client_id },
+      { name = "GH_OAUTH_CLIENT_SECRET",  value = var.gh_oauth_client_secret },
+      { name = "SITE_URL",             value = "https://${var.domain}" },
     ]
     logConfiguration = {
       logDriver = "awslogs"

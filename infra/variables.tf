@@ -34,6 +34,30 @@ variable "domain" {
   default     = "llmtxtgenerator.online"
 }
 
+variable "google_client_id" {
+  description = "Google OAuth client ID"
+  type        = string
+  sensitive   = true
+}
+
+variable "google_client_secret" {
+  description = "Google OAuth client secret"
+  type        = string
+  sensitive   = true
+}
+
+variable "gh_oauth_client_id" {
+  description = "GitHub OAuth client ID"
+  type        = string
+  sensitive   = true
+}
+
+variable "gh_oauth_client_secret" {
+  description = "GitHub OAuth client secret"
+  type        = string
+  sensitive   = true
+}
+
 variable "alert_email" {
   description = "Email address for CloudWatch alarm notifications"
   type        = string

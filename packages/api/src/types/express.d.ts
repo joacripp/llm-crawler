@@ -10,7 +10,8 @@ import 'express';
 
 declare module 'express-serve-static-core' {
   interface Request {
-    user?: { id: string; email: string | null };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    user?: Record<string, any>;
     sessionId?: string;
     sessionUserId?: string | null;
   }
