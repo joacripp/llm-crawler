@@ -165,11 +165,11 @@ Pre-commit hook runs `eslint --fix` + `prettier --write` on staged files via hus
 
 ### Testing
 
-- **194 tests across 7 packages** using Vitest.
-- Mocking pattern: `vi.mock('@llm-crawler/shared', ...)` to mock Prisma, Redis, etc. Use dynamic `await import(...)` after mocks for proper hoisting.
-- Crawler tests mock `fetcher.ts` to return controlled HTML.
-- Web tests use `happy-dom` + `@testing-library/react` (not jsdom — `ERR_REQUIRE_ESM` on Node 20).
-- No integration tests — all tests are unit tests with mocked dependencies.
+- **218 tests total** (194 unit + 24 integration) using Vitest.
+- **Unit tests** (`npm run test`): mocked dependencies. `vi.mock('@llm-crawler/shared', ...)` pattern with dynamic `await import(...)` for hoisting. Crawler tests mock `fetcher.ts`. Web tests use `happy-dom` + `@testing-library/react` (not jsdom — `ERR_REQUIRE_ESM` on Node 20).
+- **Integration tests** (`npm run test:integration --workspace packages/api`): boot the compiled NestJS app as a child process against real Postgres + Redis. Tests hit actual HTTP endpoints via fetch. Covers health, auth lifecycle, job CRUD, session middleware, anon limits. Run in CI with Postgres 16 + Redis 7 service containers.
+- **Load/stress tests** (`tests/load/`): 6 k6 scenarios (API throughput, pipeline saturation, SSE connections, large crawl, burst, connection exhaustion). Run manually against prod with `./tests/load/run-all.sh`.
+- **Prisma SSL**: `getPrisma()` skips SSL for localhost connections (local dev + CI). Production uses `ssl: { rejectUnauthorized: false }` for RDS.
 
 ## Other files
 

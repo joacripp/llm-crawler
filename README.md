@@ -241,9 +241,9 @@ npm run format:check   # Prettier --check
 
 ## Testing strategy
 
-### Current: unit tests (194 tests)
+### Unit tests (194 tests)
 
-All tests are unit tests with mocked dependencies using Vitest. Coverage by area:
+All unit tests use mocked dependencies via Vitest:
 
 | Area                | Tests | What's covered                                                                                     |
 | ------------------- | ----- | -------------------------------------------------------------------------------------------------- |
@@ -254,6 +254,26 @@ All tests are unit tests with mocked dependencies using Vitest. Coverage by area
 | **Generator**       | 17    | S3 upload, DB cleanup, race guard (pagesEmitted sync), idempotency, email notification             |
 | **Consumer**        | 11    | Page persistence, job status transitions, partial batch failure reporting                          |
 | **Monitor**         | 10    | Stale job detection, re-enqueue, progress-based failure, max invocations                           |
+
+### Integration tests (24 tests)
+
+API integration tests that boot the compiled NestJS app against real Postgres + Redis:
+
+| Area        | Tests | What's covered                                                                |
+| ----------- | ----- | ----------------------------------------------------------------------------- |
+| **Health**  | 3     | Liveness, readiness (DB+Redis+schema), no session cookies on health           |
+| **Auth**    | 6     | Signup, duplicate email, invalid email, login, wrong password, full lifecycle |
+| **Jobs**    | 9     | Create (auth/anon), anon limit, multi-job, validation, defaults, get, list    |
+| **Session** | 3     | Cookie set, session reuse, session→user linking on signup                     |
+
+```bash
+# Run locally (requires Docker)
+docker run -d --name pg-test -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=integration_test -p 5433:5432 postgres:16
+docker run -d --name redis-test -p 6379:6379 redis:7
+DATABASE_URL=postgres://postgres:postgres@localhost:5433/integration_test npx prisma migrate deploy
+npm run build
+cd packages/api && DATABASE_URL=postgres://postgres:postgres@localhost:5433/integration_test REDIS_URL=redis://localhost:6379 npm run test:integration
+```
 
 ### Smoke tests (post-deploy E2E)
 
