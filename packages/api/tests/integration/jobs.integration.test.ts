@@ -59,9 +59,18 @@ describe('Job endpoints (integration)', () => {
       expect(second.status).toBe(201);
     });
 
-    it('validates URL format', async () => {
+    it('rejects private/internal URLs (SSRF protection)', async () => {
       const cookies = await signupAndGetCookies('validate@example.com');
-      const res = await api('POST', '/api/jobs', { body: { url: 'not-a-url' }, cookies });
+      const res = await api('POST', '/api/jobs', {
+        body: { url: 'https://169.254.169.254/latest/meta-data/' },
+        cookies,
+      });
+      expect(res.status).toBe(400);
+    });
+
+    it('rejects localhost', async () => {
+      const cookies = await signupAndGetCookies('localhost@example.com');
+      const res = await api('POST', '/api/jobs', { body: { url: 'https://localhost/admin' }, cookies });
       expect(res.status).toBe(400);
     });
 

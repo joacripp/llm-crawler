@@ -1,15 +1,50 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../context/AuthContext.js';
 import Layout from '../components/Layout.js';
 import JobCard from '../components/JobCard.js';
 
+interface Job {
+  id: string;
+  rootUrl: string;
+  status: string;
+  createdAt: string;
+}
+
+const POLL_INTERVAL = 10000;
+
 export default function DashboardPage() {
-  const [jobs, setJobs] = useState<Array<{ id: string; rootUrl: string; status: string; createdAt: string }>>([]);
+  const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
+  const [changedIds, setChangedIds] = useState<Set<string>>(new Set());
+  const prevStatusRef = useRef<Map<string, string>>(new Map());
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+
+  const fetchJobs = useCallback(async (isInitial = false) => {
+    try {
+      const data = await api.listJobs();
+      setJobs(data);
+      if (isInitial) setLoading(false);
+
+      const newChanged = new Set<string>();
+      for (const job of data) {
+        const prev = prevStatusRef.current.get(job.id);
+        if (prev && prev !== job.status) {
+          newChanged.add(job.id);
+        }
+        prevStatusRef.current.set(job.id, job.status);
+      }
+
+      if (newChanged.size > 0) {
+        setChangedIds(newChanged);
+        setTimeout(() => setChangedIds(new Set()), 3000);
+      }
+    } catch {
+      if (isInitial) setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (authLoading) return;
@@ -17,12 +52,20 @@ export default function DashboardPage() {
       navigate('/login');
       return;
     }
-    api
-      .listJobs()
-      .then(setJobs)
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [user, authLoading]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchJobs(true);
+  }, [user, authLoading, fetchJobs, navigate]);
+
+  // Poll only when there are active jobs.
+
+  useEffect(() => {
+    if (authLoading || !user) return;
+    const hasActiveJobs = jobs.some((j) => j.status === 'running' || j.status === 'pending');
+    if (!hasActiveJobs) return;
+
+    const interval = setInterval(fetchJobs, POLL_INTERVAL);
+    return () => clearInterval(interval);
+  }, [authLoading, user, jobs, fetchJobs]);
 
   return (
     <Layout>
@@ -49,7 +92,7 @@ export default function DashboardPage() {
         )}
         <div className="space-y-3">
           {jobs.map((job) => (
-            <JobCard key={job.id} {...job} />
+            <JobCard key={job.id} {...job} highlight={changedIds.has(job.id)} />
           ))}
         </div>
       </div>
