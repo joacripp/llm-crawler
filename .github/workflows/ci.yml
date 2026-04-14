@@ -20,6 +20,54 @@ jobs:
       - run: npm run build
       - run: npm run test
 
+  integration-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - name: Apply migrations
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/integration_test
+      - run: npm run build
+      - name: Run integration tests
+        run: npm run test:integration --workspace packages/api
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/integration_test
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test-secret
+          JOBS_QUEUE_URL: ''
+          S3_BUCKET: test-bucket
+          GOOGLE_CLIENT_ID: test
+          GOOGLE_CLIENT_SECRET: test
+          GH_OAUTH_CLIENT_ID: test
+          GH_OAUTH_CLIENT_SECRET: test
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: integration_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
   schema-drift-check:
     # Verify that the committed migrations folder matches the current schema.
     # Catches missed `prisma migrate dev` runs after schema edits.
