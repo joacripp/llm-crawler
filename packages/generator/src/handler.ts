@@ -26,6 +26,17 @@ export async function handler(event: SQSEvent): Promise<void> {
       log.info('Starting generation', { jobId, pagesEmitted });
 
       const job = await prisma.job.findUniqueOrThrow({ where: { id: jobId } });
+
+      // Idempotency: if this job already completed (a prior attempt of this
+      // same SQS message succeeded), skip silently. SQS can redeliver the
+      // message after the visibility timeout even though a previous invocation
+      // already processed it — and by that point pages have been deleted, so
+      // the pagesEmitted check below would throw forever and DLQ the message.
+      if (job.status === 'completed' || job.status === 'failed') {
+        log.info('Job already in terminal state, skipping', { jobId, status: job.status });
+        continue;
+      }
+
       const rootUrl = job.rootUrl;
 
       const pages = await prisma.page.findMany({ where: { jobId } });

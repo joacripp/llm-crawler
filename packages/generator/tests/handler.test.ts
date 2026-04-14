@@ -89,6 +89,23 @@ describe('generator handler', () => {
     expect(publishJobUpdate).toHaveBeenCalledWith('job-1', expect.objectContaining({ type: 'completed' }));
   });
 
+  describe('idempotency: already-completed jobs', () => {
+    it('skips processing when job is already completed', async () => {
+      mockFindUnique.mockResolvedValue({ ...mockJob, status: 'completed' });
+      await handler(makeSQSEvent({ jobId: 'job-1', pagesEmitted: 3 }));
+      expect(mockFindMany).not.toHaveBeenCalled();
+      expect(mockPutObject).not.toHaveBeenCalled();
+      expect(mockUpdateJob).not.toHaveBeenCalled();
+    });
+
+    it('skips processing when job is already failed', async () => {
+      mockFindUnique.mockResolvedValue({ ...mockJob, status: 'failed' });
+      await handler(makeSQSEvent({ jobId: 'job-1', pagesEmitted: 3 }));
+      expect(mockFindMany).not.toHaveBeenCalled();
+      expect(mockPutObject).not.toHaveBeenCalled();
+    });
+  });
+
   describe('email notifications', () => {
     it('sends email to logged-in user on job completion', async () => {
       mockFindUnique.mockResolvedValue({ ...mockJob, userId: 'user-1' });
