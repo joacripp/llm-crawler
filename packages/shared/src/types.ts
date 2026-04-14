@@ -13,6 +13,9 @@ export interface JobMessage {
   stateS3Key?: string;
   maxDepth?: number;
   maxPages?: number;
+  /** When true, skip SPA detection and go straight to Playwright.
+   *  Set by the monitor when a Cheerio crawl produces zero pages. */
+  forceBrowser?: boolean;
 }
 
 export interface PageCrawledEvent {

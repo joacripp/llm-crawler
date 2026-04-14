@@ -45,6 +45,35 @@ export async function handler(): Promise<void> {
           currentPages: currentPageCount,
           previousPages: job.pagesAtLastInvocation,
         });
+
+        // Self-healing: if Cheerio produced zero pages and we haven't tried
+        // Playwright yet, re-enqueue with forceBrowser instead of giving up.
+        if (currentPageCount === 0 && !job.browserAttempted) {
+          log.info('Self-healing: zero pages with Cheerio, retrying with Playwright', { jobId: job.id });
+          const visitedRows = await prisma.page.findMany({ where: { jobId: job.id }, select: { url: true } });
+          const visited = visitedRows.map((r) => r.url);
+          const message: JobMessage = {
+            jobId: job.id,
+            urls: [job.rootUrl],
+            visited,
+            maxDepth: job.maxDepth,
+            maxPages: job.maxPages,
+            forceBrowser: true,
+          };
+          await sqs.send(new SendMessageCommand({ QueueUrl: queueUrl, MessageBody: JSON.stringify(message) }));
+          await prisma.job.update({
+            where: { id: job.id },
+            data: {
+              invocations: job.invocations + 1,
+              status: 'pending',
+              pagesAtLastInvocation: currentPageCount,
+              noProgressStrikes: 0,
+              browserAttempted: true,
+            },
+          });
+          continue;
+        }
+
         if (strikes >= MAX_NO_PROGRESS_STRIKES) {
           log.warn('Job failed: no progress after repeated retries', { jobId: job.id, strikes });
           await prisma.job.update({ where: { id: job.id }, data: { status: 'failed' } });

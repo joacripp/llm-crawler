@@ -8,6 +8,7 @@ const staleJob = {
   maxPages: 1000,
   pagesAtLastInvocation: 0,
   noProgressStrikes: 0,
+  browserAttempted: false,
 };
 const mockFindManyJobs = vi.fn().mockResolvedValue([staleJob]);
 const mockFindManyPages = vi
@@ -152,6 +153,72 @@ describe('monitor handler', () => {
       const updateData = mockUpdateJob.mock.calls[0][0].data;
       expect(updateData.status).toBe('pending');
       expect(updateData.noProgressStrikes).toBe(0);
+    });
+  });
+
+  describe('self-healing browser fallback', () => {
+    it('re-enqueues with forceBrowser when zero pages and browser not yet attempted', async () => {
+      mockFindManyJobs.mockResolvedValueOnce([
+        { ...staleJob, invocations: 1, pagesAtLastInvocation: 0, noProgressStrikes: 0, browserAttempted: false },
+      ]);
+      mockCountPages.mockResolvedValueOnce(0);
+      mockFindManyPages.mockResolvedValueOnce([]); // no visited pages
+      await handler();
+
+      // Should send message with forceBrowser: true
+      const sendCall = mockSendMessage.mock.calls[0][0];
+      const body = JSON.parse(sendCall.MessageBody);
+      expect(body.forceBrowser).toBe(true);
+      expect(body.urls).toEqual(['https://example.com']);
+
+      // Should set browserAttempted and reset strikes
+      const updateData = mockUpdateJob.mock.calls[0][0].data;
+      expect(updateData.browserAttempted).toBe(true);
+      expect(updateData.noProgressStrikes).toBe(0);
+      expect(updateData.invocations).toBe(2);
+    });
+
+    it('does not trigger browser fallback when pages exist (normal no-progress)', async () => {
+      mockFindManyJobs.mockResolvedValueOnce([
+        { ...staleJob, invocations: 3, pagesAtLastInvocation: 5, noProgressStrikes: 0, browserAttempted: false },
+      ]);
+      mockCountPages.mockResolvedValueOnce(5); // same as last invocation — no progress, but has pages
+      await handler();
+
+      // Should be a normal re-enqueue (no forceBrowser), strike incremented
+      const sendCall = mockSendMessage.mock.calls[0][0];
+      const body = JSON.parse(sendCall.MessageBody);
+      expect(body.forceBrowser).toBeUndefined();
+      const updateData = mockUpdateJob.mock.calls[0][0].data;
+      expect(updateData.noProgressStrikes).toBe(1);
+      expect(updateData.browserAttempted).toBeUndefined();
+    });
+
+    it('does not trigger browser fallback when browser was already attempted', async () => {
+      mockFindManyJobs.mockResolvedValueOnce([
+        { ...staleJob, invocations: 3, pagesAtLastInvocation: 0, noProgressStrikes: 0, browserAttempted: true },
+      ]);
+      mockCountPages.mockResolvedValueOnce(0);
+      await handler();
+
+      // Should increment strikes normally (not self-heal again)
+      const sendCall = mockSendMessage.mock.calls[0][0];
+      const body = JSON.parse(sendCall.MessageBody);
+      expect(body.forceBrowser).toBeUndefined();
+      const updateData = mockUpdateJob.mock.calls[0][0].data;
+      expect(updateData.noProgressStrikes).toBe(1);
+    });
+
+    it('fails job after browser fallback also produces zero pages', async () => {
+      mockFindManyJobs.mockResolvedValueOnce([
+        { ...staleJob, invocations: 4, pagesAtLastInvocation: 0, noProgressStrikes: 1, browserAttempted: true },
+      ]);
+      mockCountPages.mockResolvedValueOnce(0); // still 0 after Playwright attempt
+      await handler();
+
+      // Strike 2 → fail
+      expect(mockUpdateJob).toHaveBeenCalledWith({ where: { id: 'stale-1' }, data: { status: 'failed' } });
+      expect(mockSendMessage).not.toHaveBeenCalled();
     });
   });
 });

@@ -66,4 +66,16 @@ describe('handler', () => {
     const config = mockCrawl.mock.calls[0][0];
     expect(config.visited).toEqual(['https://example.com/']);
   });
+
+  it('skips SPA detection and attempts browser path when forceBrowser is set', async () => {
+    const { isSpa } = await import('../src/spa-detector.js');
+    // forceBrowser=true triggers Playwright import which isn't available in test env.
+    // The handler will throw — that's expected. The key assertion is SPA detection was skipped.
+    await expect(
+      handler(makeSQSEvent({ jobId: 'abc-123', urls: ['https://example.com/'], forceBrowser: true })),
+    ).rejects.toThrow();
+    expect(isSpa).not.toHaveBeenCalled();
+    // crawl() should NOT have been called (browser path, not cheerio path)
+    expect(mockCrawl).not.toHaveBeenCalled();
+  });
 });
