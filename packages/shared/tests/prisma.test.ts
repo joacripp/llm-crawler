@@ -22,13 +22,18 @@ describe('pingPrisma', () => {
     mockQueryRawUnsafe.mockReset();
   });
 
-  it('returns true when SELECT 1 succeeds', async () => {
-    mockQueryRawUnsafe.mockResolvedValue([{ '?column?': 1 }]);
+  it('returns true when the jobs table exists', async () => {
+    mockQueryRawUnsafe.mockResolvedValue([{ table: 'jobs' }]);
     expect(await pingPrisma()).toBe(true);
-    expect(mockQueryRawUnsafe).toHaveBeenCalledWith('SELECT 1');
+    expect(mockQueryRawUnsafe).toHaveBeenCalledWith(`SELECT to_regclass('public.jobs')::text AS "table"`);
   });
 
-  it('returns false when SELECT 1 throws', async () => {
+  it('returns false when the jobs table is missing (migrations not applied)', async () => {
+    mockQueryRawUnsafe.mockResolvedValue([{ table: null }]);
+    expect(await pingPrisma()).toBe(false);
+  });
+
+  it('returns false when the query throws (DB unreachable)', async () => {
     mockQueryRawUnsafe.mockRejectedValue(new Error('connection refused'));
     expect(await pingPrisma()).toBe(false);
   });
