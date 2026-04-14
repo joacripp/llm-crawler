@@ -13,33 +13,32 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <nav className="border-b border-slate-200 bg-white px-6 py-3">
-        <div className="mx-auto flex max-w-4xl items-center justify-between">
-          <Link to="/" className="text-lg font-bold text-slate-900">
-            llms.txt Generator
+    <div className="min-h-screen bg-zinc-950">
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,rgba(59,130,246,0.04),transparent_60%)] pointer-events-none" />
+      <nav className="relative border-b border-zinc-800/50 bg-zinc-950/80 backdrop-blur-md">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+          <Link to="/" className="text-lg font-bold tracking-tight">
+            <span className="gradient-text">llms.txt</span>
+            <span className="ml-1 font-medium text-zinc-400">Generator</span>
           </Link>
-          <div className="flex items-center gap-4 text-sm">
+          <div className="flex items-center gap-5 text-sm">
             {!loading &&
               (user ? (
                 <>
-                  <Link to="/dashboard" className="text-slate-600 hover:text-slate-900">
+                  <Link to="/dashboard" className="text-zinc-400 transition-colors hover:text-zinc-100">
                     Dashboard
                   </Link>
-                  <span className="text-slate-400 text-xs hidden sm:inline">{user.email}</span>
-                  <button onClick={handleLogout} className="text-slate-600 hover:text-slate-900">
+                  <span className="hidden text-xs text-zinc-600 sm:inline">{user.email}</span>
+                  <button onClick={handleLogout} className="text-zinc-500 transition-colors hover:text-zinc-300">
                     Sign out
                   </button>
                 </>
               ) : (
                 <>
-                  <Link to="/login" className="text-slate-600 hover:text-slate-900">
+                  <Link to="/login" className="text-zinc-400 transition-colors hover:text-zinc-100">
                     Sign in
                   </Link>
-                  <Link
-                    to="/login?mode=signup"
-                    className="rounded-lg bg-indigo-600 px-3 py-1.5 font-semibold text-white hover:bg-indigo-700"
-                  >
+                  <Link to="/login?mode=signup" className="btn-primary !px-3 !py-1.5 !text-xs">
                     Sign up
                   </Link>
                 </>
@@ -47,7 +46,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </nav>
-      <main className="mx-auto max-w-4xl px-6 py-8">{children}</main>
+      <main className="relative mx-auto max-w-5xl px-6 py-10">{children}</main>
     </div>
   );
 }
