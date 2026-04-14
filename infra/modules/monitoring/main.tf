@@ -335,12 +335,10 @@ resource "aws_cloudwatch_dashboard" "pipeline" {
           view    = "timeSeries"
           stacked = true
           region  = var.aws_region
-          metrics = flatten([
-            for name, queue in local.sqs_queues : [
-              ["AWS/SQS", "ApproximateNumberOfMessagesVisible", "QueueName", queue, { label = "${name} visible" }],
-              ["AWS/SQS", "ApproximateNumberOfMessagesNotVisible", "QueueName", queue, { label = "${name} in-flight" }]
-            ]
-          ])
+          metrics = concat(
+            [for name, queue in local.sqs_queues : ["AWS/SQS", "ApproximateNumberOfMessagesVisible", "QueueName", queue, { label = "${name} visible" }]],
+            [for name, queue in local.sqs_queues : ["AWS/SQS", "ApproximateNumberOfMessagesNotVisible", "QueueName", queue, { label = "${name} in-flight" }]]
+          )
           period = 60
         }
       },
