@@ -15,15 +15,24 @@ export async function handler(event: SQSEvent): Promise<void> {
 
   const record = event.Records[0];
   const message: JobMessage = JSON.parse(record.body);
-  const { jobId, urls, visited, maxDepth = 10, maxPages = 1000 } = message;
+  const { jobId, urls, visited, maxDepth = 10, maxPages = 1000, forceBrowser = false } = message;
 
-  log.info('Starting job', { jobId, urlCount: urls.length, visitedCount: visited?.length ?? 0, maxDepth, maxPages });
+  log.info('Starting job', {
+    jobId,
+    urlCount: urls.length,
+    visitedCount: visited?.length ?? 0,
+    maxDepth,
+    maxPages,
+    forceBrowser,
+  });
   log.info('Root URLs', { jobId, urls: urls.slice(0, 5) });
 
   const emitter = new EventEmitter(busName);
 
-  let useBrowser = false;
-  if (!visited && urls.length === 1) {
+  let useBrowser = forceBrowser;
+  if (forceBrowser) {
+    log.info('forceBrowser flag set — skipping SPA detection, using Playwright', { jobId });
+  } else if (!visited && urls.length === 1) {
     log.info('Probing for SPA detection', { jobId, url: urls[0] });
     const probeHtml = await fetchWithAxios(urls[0]);
     if (probeHtml && isSpa(probeHtml)) {
