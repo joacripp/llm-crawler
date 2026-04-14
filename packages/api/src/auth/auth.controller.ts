@@ -6,6 +6,7 @@ import { SignupDto } from './dto/signup.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
 import { GoogleAuthGuard } from './google-auth.guard.js';
+import { GithubAuthGuard } from './github-auth.guard.js';
 
 const SITE_URL = process.env.SITE_URL ?? 'https://llmtxtgenerator.online';
 
@@ -55,6 +56,31 @@ export class AuthController {
   @Get('google/callback')
   @UseGuards(GoogleAuthGuard)
   async googleCallback(@Req() req: Request, @Res() res: Response) {
+    try {
+      const profile = req.user as { oauthProvider: string; oauthId: string; email: string | null };
+      const user = await this.authService.findOrCreateOAuthUser(profile);
+      const sessionId = req.sessionId;
+      if (sessionId) await this.sessionService.linkToUser(sessionId, user.id);
+      const tokens = this.authService.generateTokens(user);
+      this.setTokenCookies(res, tokens);
+      res.redirect(`${SITE_URL}/dashboard`);
+    } catch (err) {
+      const message = err instanceof Error ? encodeURIComponent(err.message) : 'OAuth failed';
+      res.redirect(`${SITE_URL}/login?error=${message}`);
+    }
+  }
+
+  // --- GitHub OAuth ---
+
+  @Get('github')
+  @UseGuards(GithubAuthGuard)
+  githubLogin() {
+    // Guard redirects to GitHub — this method body is never reached.
+  }
+
+  @Get('github/callback')
+  @UseGuards(GithubAuthGuard)
+  async githubCallback(@Req() req: Request, @Res() res: Response) {
     try {
       const profile = req.user as { oauthProvider: string; oauthId: string; email: string | null };
       const user = await this.authService.findOrCreateOAuthUser(profile);

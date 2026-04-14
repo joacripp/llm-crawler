@@ -5,6 +5,7 @@ import { AuthService } from './auth.service.js';
 import { AuthController } from './auth.controller.js';
 import { JwtStrategy } from './jwt.strategy.js';
 import { GoogleStrategy } from './google.strategy.js';
+import { GithubStrategy } from './github.strategy.js';
 import { SessionModule } from '../session/session.module.js';
 
 @Module({
@@ -14,7 +15,7 @@ import { SessionModule } from '../session/session.module.js';
     SessionModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, GoogleStrategy],
+  providers: [AuthService, JwtStrategy, GoogleStrategy, GithubStrategy],
   exports: [AuthService, JwtStrategy],
 })
 export class AuthModule {}

@@ -62,6 +62,16 @@ variable "google_client_secret" {
   sensitive = true
 }
 
+variable "gh_oauth_client_id" {
+  type      = string
+  sensitive = true
+}
+
+variable "gh_oauth_client_secret" {
+  type      = string
+  sensitive = true
+}
+
 variable "certificate_arn" {
   type = string
 }

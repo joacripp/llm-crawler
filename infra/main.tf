@@ -109,6 +109,8 @@ module "api" {
   jwt_secret               = var.jwt_secret
   google_client_id         = var.google_client_id
   google_client_secret     = var.google_client_secret
+  gh_oauth_client_id       = var.gh_oauth_client_id
+  gh_oauth_client_secret   = var.gh_oauth_client_secret
   domain                   = var.domain
   certificate_arn          = var.certificate_arn
   hosted_zone_id           = var.hosted_zone_id
