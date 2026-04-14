@@ -85,7 +85,7 @@ describe('monitor handler', () => {
     expect(mockSendMessage).not.toHaveBeenCalled();
   });
 
-  it('triggers generator when no pending URLs remain', async () => {
+  it('triggers generator with pagesEmitted when no pending URLs remain', async () => {
     mockFindManyDiscovered.mockResolvedValueOnce([
       { url: 'https://example.com/' },
       { url: 'https://example.com/about' },
@@ -94,5 +94,6 @@ describe('monitor handler', () => {
     expect(mockSendMessage).toHaveBeenCalledOnce();
     const body = JSON.parse(mockSendMessage.mock.calls[0][0].MessageBody);
     expect(body['detail-type']).toBe('job.completed');
+    expect(body.detail.pagesEmitted).toBe(2);
   });
 });

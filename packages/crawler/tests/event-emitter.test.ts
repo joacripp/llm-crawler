@@ -48,10 +48,12 @@ describe('EventEmitter', () => {
     expect(mockSend).toHaveBeenCalledTimes(2);
   });
 
-  it('emits job.completed event', async () => {
-    await emitter.emitJobCompleted({ jobId: 'abc' });
+  it('emits job.completed event with pagesEmitted', async () => {
+    await emitter.emitJobCompleted({ jobId: 'abc', pagesEmitted: 7 });
     expect(mockSend).toHaveBeenCalledOnce();
     const call = mockSend.mock.calls[0][0];
     expect(call.Entries[0].DetailType).toBe('job.completed');
+    const detail = JSON.parse(call.Entries[0].Detail);
+    expect(detail.pagesEmitted).toBe(7);
   });
 });
