@@ -52,7 +52,7 @@ Terraform modules: networking, database (RDS Postgres 16), redis (ElastiCache), 
 npm install
 npx prisma generate    # REQUIRED before build — generates Prisma client
 npm run build
-npm run test           # 194 tests across 7 packages
+npm run test           # 215 unit tests across 7 packages
 ```
 
 ### Running locally
@@ -134,6 +134,15 @@ Pre-commit hook runs `eslint --fix` + `prettier --write` on staged files via hus
 - **`REDIS_URL` env var** needed by consumer, generator, and NestJS (ECS).
 - **Fire-and-forget** — if nobody is subscribed to `job:{id}`, messages are discarded. The frontend uses polling as a fallback if SSE doesn't connect.
 
+### Security (SSRF)
+
+- **Three-layer SSRF protection**:
+  1. **DTO validator** — blocks `localhost`, `127.x`, `10.x`, `169.254.x` by hostname string at job creation. Auto-prepends `https://` for UX.
+  2. **API service DNS check** — resolves hostname via `dns.lookup()` before creating the job. Catches DNS rebinding (e.g. `evil.com` → `169.254.169.254`). Returns 400 with user-friendly message.
+  3. **Crawler fetcher DNS check** — resolves hostname before every HTTP fetch during crawl. Catches sub-page links that resolve to private IPs.
+- **`url-safety.ts`** in `packages/api/src/jobs/` — shared DNS resolution + IP verification helper.
+- Blocked ranges: loopback, private (A/B/C), link-local, AWS metadata, carrier-grade NAT, IPv6 private/loopback.
+
 ### Email (SES)
 
 - **Domain `llmtxtgenerator.online`** verified in SES with DKIM (Route 53 records managed by Terraform).
@@ -165,7 +174,7 @@ Pre-commit hook runs `eslint --fix` + `prettier --write` on staged files via hus
 
 ### Testing
 
-- **218 tests total** (194 unit + 24 integration) using Vitest.
+- **239 tests total** (215 unit + 24 integration) using Vitest.
 - **Unit tests** (`npm run test`): mocked dependencies. `vi.mock('@llm-crawler/shared', ...)` pattern with dynamic `await import(...)` for hoisting. Crawler tests mock `fetcher.ts`. Web tests use `happy-dom` + `@testing-library/react` (not jsdom — `ERR_REQUIRE_ESM` on Node 20).
 - **Integration tests** (`npm run test:integration --workspace packages/api`): boot the compiled NestJS app as a child process against real Postgres + Redis. Tests hit actual HTTP endpoints via fetch. Covers health, auth lifecycle, job CRUD, session middleware, anon limits. Run in CI with Postgres 16 + Redis 7 service containers.
 - **Load/stress tests** (`tests/load/`): 6 k6 scenarios (API throughput, pipeline saturation, SSE connections, large crawl, burst, connection exhaustion). Run manually against prod with `./tests/load/run-all.sh`.

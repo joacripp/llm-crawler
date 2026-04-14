@@ -4,18 +4,19 @@ An automated tool that crawls any website and generates a structured [llms.txt](
 
 **Live at [llmtxtgenerator.online](https://llmtxtgenerator.online)**
 
-![Dark theme UI](https://img.shields.io/badge/UI-Dark_Theme-1a1a2e?style=flat-square) ![Tests](https://img.shields.io/badge/tests-194_passing-34d399?style=flat-square) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?style=flat-square)
+![Dark theme UI](https://img.shields.io/badge/UI-Dark_Theme-1a1a2e?style=flat-square) ![Tests](https://img.shields.io/badge/tests-239_passing-34d399?style=flat-square) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?style=flat-square)
 
 ---
 
 ## Features
 
-- **Paste a URL, get llms.txt** — crawl any website and receive a structured llms.txt file conforming to the [llmstxt.org spec](https://llmstxt.org/)
-- **Dual crawler engine** — Cheerio (HTTP + parse) for server-rendered sites, Playwright for SPAs. Automatic detection via heuristic
-- **Real-time progress** — SSE streaming + polling fallback shows pages discovered as they're crawled
+- **Paste a URL, get llms.txt** — just type `example.com` (https:// auto-prepended) and receive a structured llms.txt file conforming to the [llmstxt.org spec](https://llmstxt.org/)
+- **Dual crawler engine** — Cheerio (HTTP + parse) for server-rendered sites, Playwright for SPAs. Automatic detection via heuristic (body text + link analysis, not just `<script type="module">`)
+- **Real-time progress** — SSE streaming + polling fallback shows pages discovered as they're crawled. Dashboard auto-refreshes with status change highlights
 - **Email notifications** — logged-in users receive an email when their crawl completes (SES)
 - **OAuth login** — Google and GitHub sign-in alongside email+password
-- **Resilient architecture** — Lambda workers with continuous checkpointing to Postgres. Jobs survive Lambda timeouts via a resurrection monitor that detects stale jobs and re-enqueues them
+- **SSRF protection** — three-layer defense: hostname validation, DNS resolution (catches rebinding attacks), and per-page IP verification in the crawler
+- **Resilient architecture** — Lambda workers with continuous checkpointing to Postgres. Jobs survive Lambda timeouts via a resurrection monitor with progress-based failure detection
 - **Dark developer-tool UI** — built with React, Tailwind, Inter + JetBrains Mono. Terminal-style progress view, code-block result preview
 
 ---
@@ -213,7 +214,7 @@ cd llm-crawler
 npm install
 npx prisma generate    # required before build
 npm run build
-npm run test           # 194 tests across 7 packages
+npm run test           # 215 unit tests across 7 packages
 ```
 
 ### Running locally
@@ -241,19 +242,19 @@ npm run format:check   # Prettier --check
 
 ## Testing strategy
 
-### Unit tests (194 tests)
+### Unit tests (215 tests)
 
 All unit tests use mocked dependencies via Vitest:
 
-| Area                | Tests | What's covered                                                                                     |
-| ------------------- | ----- | -------------------------------------------------------------------------------------------------- |
-| **API controllers** | 54    | Auth (signup/login/refresh/logout/OAuth), jobs (CRUD), session middleware, SSE, health             |
-| **Web (React)**     | 40    | All pages (Home, Login, Job, Dashboard), hooks (useJobStream, useAuth), API client (refresh/retry) |
-| **Shared**          | 36    | URL utils, llms.txt generator, Redis pub/sub, Prisma ping, email helper, types                     |
-| **Crawler**         | 26    | BFS crawl, SPA detection, event emitter chunking, handler lifecycle                                |
-| **Generator**       | 17    | S3 upload, DB cleanup, race guard (pagesEmitted sync), idempotency, email notification             |
-| **Consumer**        | 11    | Page persistence, job status transitions, partial batch failure reporting                          |
-| **Monitor**         | 10    | Stale job detection, re-enqueue, progress-based failure, max invocations                           |
+| Area            | Tests | What's covered                                                                                             |
+| --------------- | ----- | ---------------------------------------------------------------------------------------------------------- |
+| **API**         | 61    | Auth (signup/login/refresh/logout/OAuth), jobs (CRUD), session middleware, SSE, health, URL safety (SSRF)  |
+| **Web (React)** | 40    | All pages (Home, Login, Job, Dashboard), hooks (useJobStream, useAuth), API client (refresh/retry)         |
+| **Crawler**     | 39    | BFS crawl, SPA detection (10 cases), event emitter chunking, handler lifecycle, fetcher SSRF (DNS resolve) |
+| **Shared**      | 36    | URL utils, llms.txt generator, Redis pub/sub, Prisma ping, email helper, types                             |
+| **Generator**   | 17    | S3 upload, DB cleanup, race guard (pagesEmitted sync), idempotency, email notification                     |
+| **Consumer**    | 12    | Page persistence, job status transitions, partial batch failure, batch insert                              |
+| **Monitor**     | 10    | Stale job detection, re-enqueue, progress-based failure, max invocations                                   |
 
 ### Integration tests (24 tests)
 
@@ -329,7 +330,7 @@ Every PR runs:
 1. **Lint** — ESLint with 0 errors required
 2. **Format check** — Prettier, no drift allowed
 3. **Build** — full Turborepo build across all 7 packages
-4. **Test** — 194 unit tests via Vitest
+4. **Test** — 215 unit tests via Vitest
 5. **Schema drift check** — applies Prisma migrations to a throwaway Postgres, diffs against `schema.prisma`. Catches forgotten `prisma migrate dev` after schema edits
 6. **Terraform validate** — syntax + provider check on infra/
 
