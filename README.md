@@ -314,11 +314,6 @@ k6 run tests/load/04-large-crawl.js
 
 The runner prints CloudWatch dashboard links at the start (watch live), then pulls Lambda invocations/errors, queue depths, DLQ counts, RDS connections, Redis connections, and ECS utilization after all tests complete.
 
-### Still missing
-
-- **Chaos testing** — what if Redis goes down mid-crawl? What if RDS has a maintenance window? The resurrection monitor should handle it, but we haven't verified.
-- **Edge-case integration tests** — SPA that changes structure mid-crawl, sites that rate-limit, sites with infinite pagination.
-
 ---
 
 ## CI/CD strategy
