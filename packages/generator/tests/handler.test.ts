@@ -48,6 +48,9 @@ describe('generator handler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.S3_BUCKET = 'test-bucket';
+    // Disable poll-before-retry waits in tests so failure paths don't wait 10s.
+    process.env.GENERATOR_POLL_DEADLINE_MS = '0';
+    process.env.GENERATOR_POLL_INTERVAL_MS = '0';
     // Default: anonymous job (no userId)
     mockFindUnique.mockResolvedValue(mockJob);
   });
@@ -173,6 +176,19 @@ describe('generator handler', () => {
       expect(mockDeleteManyDiscovered).not.toHaveBeenCalled();
       expect(mockUpdateJob).not.toHaveBeenCalled();
       expect(mockPutObject).not.toHaveBeenCalled();
+    });
+
+    it('polls and proceeds once the consumer catches up within the deadline', async () => {
+      // Allow up to ~200ms of polling; first read returns empty, second returns full set.
+      process.env.GENERATOR_POLL_DEADLINE_MS = '500';
+      process.env.GENERATOR_POLL_INTERVAL_MS = '20';
+      mockFindMany.mockResolvedValueOnce([]).mockResolvedValue(mockPages);
+
+      await handler(makeSQSEvent({ jobId: 'job-1', pagesEmitted: 2 }));
+
+      expect(mockFindMany.mock.calls.length).toBeGreaterThanOrEqual(2);
+      expect(mockPutObject).toHaveBeenCalledTimes(2);
+      expect(mockUpdateJob).toHaveBeenCalled();
     });
   });
 });

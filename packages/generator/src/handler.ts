@@ -39,23 +39,41 @@ export async function handler(event: SQSEvent): Promise<void> {
 
       const rootUrl = job.rootUrl;
 
-      const pages = await prisma.page.findMany({ where: { jobId } });
-      log.info('Pages loaded', { jobId, rootUrl, pageCount: pages.length, pagesEmitted });
-
       // Race guard: page.crawled events flow through a different SQS queue
       // than job.completed, so the generator can run before the consumer has
       // persisted all pages. The crawler passes pagesEmitted — the exact
-      // number of page.crawled events it sent. We wait (via SQS retry) until
-      // the consumer has caught up.
+      // number of page.crawled events it sent.
+      //
+      // Strategy: poll the DB briefly first (consumer lag is usually 1–3s),
+      // and only fall back to throw → SQS retry if it doesn't catch up. This
+      // avoids the full visibility-timeout round-trip on every healthy run.
       //
       // Fallback for older events / monitor-synthesised completions that
       // don't carry pagesEmitted: require at least 1 page.
       const expectedPages = pagesEmitted ?? 1;
+      const POLL_DEADLINE_MS = Number(process.env.GENERATOR_POLL_DEADLINE_MS ?? 10_000);
+      const POLL_INTERVAL_MS = Number(process.env.GENERATOR_POLL_INTERVAL_MS ?? 500);
+      const startedAt = Date.now();
+
+      let pages = await prisma.page.findMany({ where: { jobId } });
+      while (pages.length < expectedPages && Date.now() - startedAt < POLL_DEADLINE_MS) {
+        await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+        pages = await prisma.page.findMany({ where: { jobId } });
+      }
+      log.info('Pages loaded', {
+        jobId,
+        rootUrl,
+        pageCount: pages.length,
+        pagesEmitted,
+        waitedMs: Date.now() - startedAt,
+      });
+
       if (pages.length < expectedPages) {
-        log.warn('Consumer has not caught up yet — throwing to let SQS retry', {
+        log.warn('Consumer has not caught up after poll — throwing to let SQS retry', {
           jobId,
           persisted: pages.length,
           expected: expectedPages,
+          waitedMs: Date.now() - startedAt,
         });
         throw new Error(
           `Only ${pages.length}/${expectedPages} pages persisted for job ${jobId} — generator raced consumer; SQS will retry`,
