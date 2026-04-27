@@ -19,14 +19,14 @@ export function useJobStream(jobId: string | null): StreamState {
   useEffect(() => {
     if (!jobId) return;
 
-    const apiBase = import.meta.env.VITE_API_URL ?? '';
+    const apiBase = (import.meta as any).env.VITE_API_URL ?? '';
     const source = new EventSource(`${apiBase}/api/jobs/${jobId}/stream`);
     sourceRef.current = source;
 
     source.addEventListener('progress', (e) => {
       const data = JSON.parse(e.data);
       setState((prev) => {
-        const latestUrls = data.url ? [data.url, ...prev.latestUrls].slice(0, 8) : prev.latestUrls;
+        const latestUrls = data.url ? [data.url, ...prev.latestUrls].slice(0, 50) : prev.latestUrls;
         return {
           pagesFound: data.pagesFound,
           status: 'running',
