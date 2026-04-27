@@ -65,7 +65,7 @@ export default function JobPage() {
 
   return (
     <Layout>
-      <div className="mx-auto max-w-xl">
+      <div className={`mx-auto ${isComplete || (!isFailed && shouldStream) ? 'max-w-7xl' : 'max-w-xl'}`}>
         {!isComplete && !isFailed && user?.email && (
           <div className="mb-4 rounded-lg border border-blue-500/20 bg-blue-500/5 px-4 py-3 text-center">
             <p className="text-sm text-blue-300">

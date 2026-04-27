@@ -26,7 +26,7 @@ export function useJobStream(jobId: string | null): StreamState {
     source.addEventListener('progress', (e) => {
       const data = JSON.parse(e.data);
       setState((prev) => {
-        const latestUrls = data.url ? [data.url, ...prev.latestUrls].slice(0, 8) : prev.latestUrls;
+        const latestUrls = data.url ? [data.url, ...prev.latestUrls].slice(0, 50) : prev.latestUrls;
         return {
           pagesFound: data.pagesFound,
           status: 'running',

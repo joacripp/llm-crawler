@@ -79,18 +79,18 @@ describe('useJobStream', () => {
     expect(result.current.latestUrls).toEqual(['https://example.com/about', 'https://example.com/']);
   });
 
-  it('caps latestUrls at 8 entries', () => {
+  it('caps latestUrls at 50 entries', () => {
     const { result } = renderHook(() => useJobStream('abc'));
     const es = FakeEventSource.instances[0];
 
     act(() => {
-      for (let i = 0; i < 12; i++) {
+      for (let i = 0; i < 60; i++) {
         es.emit('progress', { pagesFound: i + 1, url: `https://example.com/${i}` });
       }
     });
-    expect(result.current.latestUrls).toHaveLength(8);
+    expect(result.current.latestUrls).toHaveLength(50);
     // Most recent is first.
-    expect(result.current.latestUrls[0]).toBe('https://example.com/11');
+    expect(result.current.latestUrls[0]).toBe('https://example.com/59');
   });
 
   it('transitions to completed and closes the source on completed event', () => {
