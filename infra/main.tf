@@ -35,25 +35,6 @@ module "networking" {
   project     = var.project
 }
 
-module "database" {
-  source            = "./modules/database"
-  environment       = var.environment
-  project           = var.project
-  vpc_id            = module.networking.vpc_id
-  private_subnet_ids = module.networking.private_subnet_ids
-  db_security_group_id = module.networking.db_security_group_id
-  db_password       = var.db_password
-}
-
-module "redis" {
-  source            = "./modules/redis"
-  environment       = var.environment
-  project           = var.project
-  vpc_id            = module.networking.vpc_id
-  private_subnet_ids = module.networking.private_subnet_ids
-  redis_security_group_id = module.networking.redis_security_group_id
-}
-
 module "storage" {
   source      = "./modules/storage"
   environment = var.environment
@@ -80,40 +61,38 @@ module "lambdas" {
   source                    = "./modules/lambdas"
   environment               = var.environment
   project                   = var.project
-  private_subnet_ids        = module.networking.private_subnet_ids
-  lambda_security_group_id  = module.networking.lambda_security_group_id
   crawl_jobs_queue_arn      = module.queues.crawl_jobs_queue_arn
   crawl_pages_queue_arn     = module.queues.crawl_pages_queue_arn
   crawl_completed_queue_arn = module.queues.crawl_completed_queue_arn
   event_bus_name            = module.events.event_bus_name
-  database_url              = module.database.connection_url
-  redis_url                 = module.redis.connection_url
+  database_url              = var.database_url
+  redis_url                 = var.redis_url
   results_bucket            = module.storage.results_bucket_name
   crawl_jobs_queue_url      = module.queues.crawl_jobs_queue_url
   crawl_completed_queue_url = module.queues.crawl_completed_queue_url
 }
 
 module "api" {
-  source                   = "./modules/api"
-  environment              = var.environment
-  project                  = var.project
-  vpc_id                   = module.networking.vpc_id
-  public_subnet_ids        = module.networking.public_subnet_ids
-  private_subnet_ids       = module.networking.private_subnet_ids
-  ecs_security_group_id    = module.networking.ecs_security_group_id
-  alb_security_group_id    = module.networking.alb_security_group_id
-  database_url             = module.database.connection_url
-  redis_url                = module.redis.connection_url
-  jobs_queue_url           = module.queues.crawl_jobs_queue_url
-  results_bucket           = module.storage.results_bucket_name
-  jwt_secret               = var.jwt_secret
-  google_client_id         = var.google_client_id
-  google_client_secret     = var.google_client_secret
-  gh_oauth_client_id       = var.gh_oauth_client_id
-  gh_oauth_client_secret   = var.gh_oauth_client_secret
-  domain                   = var.domain
-  certificate_arn          = var.certificate_arn
-  hosted_zone_id           = var.hosted_zone_id
+  source                 = "./modules/api"
+  environment            = var.environment
+  project                = var.project
+  vpc_id                 = module.networking.vpc_id
+  public_subnet_ids      = module.networking.public_subnet_ids
+  private_subnet_ids     = module.networking.private_subnet_ids
+  ecs_security_group_id  = module.networking.ecs_security_group_id
+  alb_security_group_id  = module.networking.alb_security_group_id
+  database_url           = var.database_url
+  redis_url              = var.redis_url
+  jobs_queue_url         = module.queues.crawl_jobs_queue_url
+  results_bucket         = module.storage.results_bucket_name
+  jwt_secret             = var.jwt_secret
+  google_client_id       = var.google_client_id
+  google_client_secret   = var.google_client_secret
+  gh_oauth_client_id     = var.gh_oauth_client_id
+  gh_oauth_client_secret = var.gh_oauth_client_secret
+  domain                 = var.domain
+  certificate_arn        = var.certificate_arn
+  hosted_zone_id         = var.hosted_zone_id
 }
 
 module "ses" {
