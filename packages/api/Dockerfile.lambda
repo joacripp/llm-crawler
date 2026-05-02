@@ -16,7 +16,8 @@ COPY tsconfig*.json ./
 COPY packages/api/nest-cli.json packages/api/
 
 RUN npx prisma generate
-RUN npx turbo build --filter=@llm-crawler/api
+RUN cd packages/shared && npm run build
+RUN cd packages/api && npm run build
 
 # Lambda handler: packages/api/dist/lambda.handler
 CMD ["packages/api/dist/lambda.handler"]
