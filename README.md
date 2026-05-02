@@ -4,9 +4,9 @@ An automated tool that crawls any website and generates a structured [llms.txt](
 
 **Live at [llmtxtgenerator.online](https://llmtxtgenerator.online)**
 
-![Dark theme UI](https://img.shields.io/badge/UI-Dark_Theme-1a1a2e?style=flat-square) ![Tests](https://img.shields.io/badge/tests-239_passing-34d399?style=flat-square) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?style=flat-square) ![AWS cost](https://img.shields.io/badge/AWS_cost-~%243%2Fmo-f59e0b?style=flat-square)
+![Dark theme UI](https://img.shields.io/badge/UI-Dark_Theme-1a1a2e?style=flat-square) ![Tests](https://img.shields.io/badge/tests-239_passing-34d399?style=flat-square) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?style=flat-square) ![AWS cost](https://img.shields.io/badge/AWS_cost-~%241%2Fmo-f59e0b?style=flat-square)
 
-> **Runs for ~$3/mo on AWS.** The API is a Lambda container behind API Gateway (no ECS/ALB). Postgres is [Neon](https://neon.tech) and Redis is [Upstash](https://upstash.com) — both serverless, both free at this scale. Only S3, SQS, EventBridge, CloudFront, and Route53 run inside AWS.
+> **Runs for under $1/mo on AWS.** The API is a Lambda container behind API Gateway (no ECS/ALB). Postgres is [Neon](https://neon.tech) and Redis is [Upstash](https://upstash.com) — both serverless, both free at this scale. Only S3, SQS, EventBridge, CloudFront, and Route53 run inside AWS.
 
 ---
 
