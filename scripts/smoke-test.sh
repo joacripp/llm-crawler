@@ -32,14 +32,20 @@ fail() { echo "[smoke] FAIL: $*" >&2; exit 1; }
 # 1. Health checks (liveness + readiness)
 # ---------------------------------------------------------------------------
 log "Checking $API_BASE/api/health (liveness)"
-HEALTH=$(curl -fsS --max-time 10 "$API_BASE/api/health") \
-  || fail "Health endpoint did not respond with 2xx"
+# Retry up to 6 times with 10s timeout each — Lambda cold start can take ~15s
+HEALTH=""
+for attempt in $(seq 1 6); do
+  HEALTH=$(curl -fsS --max-time 10 "$API_BASE/api/health" 2>/dev/null) && break
+  log "  attempt $attempt failed, retrying in 5s..."
+  sleep 5
+done
+[ -n "$HEALTH" ] || fail "Health endpoint did not respond after retries"
 echo "$HEALTH" | grep -q '"status":"ok"' \
   || fail "Health endpoint did not return status=ok: $HEALTH"
 log "  ok"
 
 log "Checking $API_BASE/api/health/ready (DB + Redis)"
-READY=$(curl -fsS --max-time 10 "$API_BASE/api/health/ready") \
+READY=$(curl -fsS --max-time 30 "$API_BASE/api/health/ready") \
   || fail "Readiness endpoint did not respond with 2xx (degraded?)"
 echo "$READY" | grep -q '"db":"ok"' \
   || fail "Readiness reports DB unhealthy: $READY"
