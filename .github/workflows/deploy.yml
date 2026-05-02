@@ -93,7 +93,7 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
       - name: Build and push Lambda container image
         run: |
-          docker build --provenance=false \
+          docker build --platform linux/amd64 --provenance=false \
             -t ${{ secrets.ECR_REPOSITORY_URL }}:${{ github.sha }} \
             -t ${{ secrets.ECR_REPOSITORY_URL }}:latest \
             -f packages/api/Dockerfile.lambda .

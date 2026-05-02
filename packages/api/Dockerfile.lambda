@@ -13,7 +13,7 @@ RUN npm ci
 # Copy source and build
 COPY packages/ packages/
 COPY tsconfig*.json ./
-COPY nest-cli.json ./
+COPY packages/api/nest-cli.json packages/api/
 
 RUN npx prisma generate
 RUN cd packages/api && npm run build
