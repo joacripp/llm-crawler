@@ -1,4 +1,37 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+
+const WIDTHS = [48, 64, 56, 72, 40, 80, 60, 52, 68, 44, 76, 36, 58, 66, 42];
+
+function SkeletonFeed() {
+  const [rows, setRows] = useState(() =>
+    Array.from({ length: 6 }, (_, i) => ({ id: i, w: WIDTHS[i % WIDTHS.length] })),
+  );
+  const counterRef = useRef(6);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const id = counterRef.current++;
+      const w = WIDTHS[id % WIDTHS.length];
+      setRows((prev) => [{ id, w }, ...prev].slice(0, 28));
+    }, 600);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="space-y-1.5">
+      {rows.map((row, i) => (
+        <div
+          key={row.id}
+          className="flex items-center gap-2 py-0.5 transition-opacity duration-500"
+          style={{ opacity: Math.max(0.08, 1 - i * 0.06) }}
+        >
+          <span className="animate-pulse text-emerald-500/70">+</span>
+          <div className="h-2.5 animate-pulse rounded bg-zinc-700/60" style={{ width: `${row.w}%` }} />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 interface ProgressViewProps {
   pagesFound: number;
@@ -75,7 +108,8 @@ export default function ProgressView({ pagesFound, status, rootUrl, latestUrls, 
           </span>
         </div>
         <div className="max-h-[calc(100vh-220px)] min-h-[480px] overflow-y-auto p-4 font-mono text-xs">
-          {latestUrls.length === 0 && <p className="text-zinc-600">Waiting for pages...</p>}
+          {latestUrls.length === 0 && status === 'running' && <SkeletonFeed />}
+          {latestUrls.length === 0 && status === 'connecting' && <p className="text-zinc-600">Waiting for pages...</p>}
           {latestUrls.map((url) => (
             <div key={url} className="animate-slide-up flex gap-2 py-0.5">
               <span className="text-emerald-500">+</span>
