@@ -72,15 +72,37 @@ module "lambdas" {
   crawl_completed_queue_url = module.queues.crawl_completed_queue_url
 }
 
-module "api" {
-  source                 = "./modules/api"
+# RESTORE: Uncomment to bring back ECS Fargate + ALB (~$15/mo).
+# Also restore private_subnet_ids + ecs_security_group_id in networking outputs,
+# and set assign_public_ip = false on ECS service. See infra/RESTORE.md.
+#
+# module "api" {
+#   source                 = "./modules/api"
+#   environment            = var.environment
+#   project                = var.project
+#   vpc_id                 = module.networking.vpc_id
+#   public_subnet_ids      = module.networking.public_subnet_ids
+#   private_subnet_ids     = module.networking.private_subnet_ids
+#   ecs_security_group_id  = module.networking.ecs_security_group_id
+#   alb_security_group_id  = module.networking.alb_security_group_id
+#   database_url           = var.database_url
+#   redis_url              = var.redis_url
+#   jobs_queue_url         = module.queues.crawl_jobs_queue_url
+#   results_bucket         = module.storage.results_bucket_name
+#   jwt_secret             = var.jwt_secret
+#   google_client_id       = var.google_client_id
+#   google_client_secret   = var.google_client_secret
+#   gh_oauth_client_id     = var.gh_oauth_client_id
+#   gh_oauth_client_secret = var.gh_oauth_client_secret
+#   domain                 = var.domain
+#   certificate_arn        = var.certificate_arn
+#   hosted_zone_id         = var.hosted_zone_id
+# }
+
+module "api_lambda" {
+  source                 = "./modules/api-lambda"
   environment            = var.environment
   project                = var.project
-  vpc_id                 = module.networking.vpc_id
-  public_subnet_ids      = module.networking.public_subnet_ids
-  private_subnet_ids     = module.networking.private_subnet_ids
-  ecs_security_group_id  = module.networking.ecs_security_group_id
-  alb_security_group_id  = module.networking.alb_security_group_id
   database_url           = var.database_url
   redis_url              = var.redis_url
   jobs_queue_url         = module.queues.crawl_jobs_queue_url
