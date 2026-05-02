@@ -6,14 +6,6 @@ variable "project" {
   type = string
 }
 
-variable "private_subnet_ids" {
-  type = list(string)
-}
-
-variable "lambda_security_group_id" {
-  type = string
-}
-
 variable "crawl_jobs_queue_arn" {
   type = string
 }

@@ -22,8 +22,14 @@ variable "jwt_secret" {
   sensitive   = true
 }
 
-variable "db_password" {
-  description = "RDS master password"
+variable "database_url" {
+  description = "Neon Postgres connection string"
+  type        = string
+  sensitive   = true
+}
+
+variable "redis_url" {
+  description = "Upstash Redis connection string (rediss://...)"
   type        = string
   sensitive   = true
 }
