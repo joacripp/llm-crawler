@@ -157,6 +157,10 @@ Pre-commit hook runs `eslint --fix` + `prettier --write` on staged files via hus
 - **Health checks**: `GET /api/health` (liveness, shallow — used by ALB) and `GET /api/health/ready` (readiness — pings DB + Redis, checks `jobs` table exists). ALB only uses the shallow one.
 - **`force-new-deployment`** — the deploy workflow pushes to ECR with `:latest` tag and forces ECS redeployment.
 
+### Git Workflow
+
+- **Never push directly to `main`** — always create a feature branch and open a PR.
+
 ### CI/CD
 
 - **GitHub Actions**: `ci.yml` (PR: lint, format:check, test, schema-drift-check, terraform validate) and `deploy.yml` (push to main: test → selective deploy based on changed paths → smoke test).
