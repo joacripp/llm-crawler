@@ -32,22 +32,6 @@ export default function JobPage() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  useEffect(() => {
-    if (!id || !shouldStream) return;
-    const interval = setInterval(() => {
-      api
-        .getJob(id)
-        .then((job) => {
-          if (job.status === 'completed') {
-            setInitialStatus('completed');
-            setInitialPagesFound(job.pagesFound);
-          }
-        })
-        .catch(() => {});
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [id, shouldStream]);
-
   const isComplete = initialStatus === 'completed' || stream.status === 'completed';
   const isFailed = initialStatus === 'failed';
   const pagesFound = stream.pagesFound || initialPagesFound;
