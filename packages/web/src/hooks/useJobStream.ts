@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { api } from '../api.js';
 
 interface StreamState {
   pagesFound: number;
@@ -14,47 +15,33 @@ export function useJobStream(jobId: string | null): StreamState {
     latestUrls: [],
     startedAt: null,
   });
-  const sourceRef = useRef<EventSource | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (!jobId) return;
 
-    const apiBase = import.meta.env.VITE_API_URL ?? '';
-    const source = new EventSource(`${apiBase}/api/jobs/${jobId}/stream`);
-    sourceRef.current = source;
-
-    source.addEventListener('progress', (e) => {
-      const data = JSON.parse(e.data);
-      setState((prev) => {
-        const latestUrls = data.url ? [data.url, ...prev.latestUrls].slice(0, 50) : prev.latestUrls;
-        return {
-          pagesFound: data.pagesFound,
-          status: 'running',
-          latestUrls,
-          startedAt: prev.startedAt ?? Date.now(),
-        };
-      });
-    });
-
-    source.addEventListener('completed', (e) => {
-      const data = JSON.parse(e.data);
-      setState((prev) => ({
-        ...prev,
-        pagesFound: data.pagesFound ?? prev.pagesFound,
-        status: 'completed',
-      }));
-      source.close();
-    });
-
-    source.onerror = () => {
-      if (source.readyState === EventSource.CLOSED) return;
-      setState((prev) => ({ ...prev, status: 'error' }));
-      source.close();
+    const poll = () => {
+      api
+        .getJob(jobId)
+        .then((job) => {
+          setState((prev) => ({
+            pagesFound: job.pagesFound,
+            status: job.status === 'completed' ? 'completed' : job.status === 'failed' ? 'error' : 'running',
+            latestUrls: prev.latestUrls,
+            startedAt: prev.startedAt ?? Date.now(),
+          }));
+          if (job.status === 'completed' || job.status === 'failed') {
+            if (intervalRef.current) clearInterval(intervalRef.current);
+          }
+        })
+        .catch(() => {});
     };
 
+    poll();
+    intervalRef.current = setInterval(poll, 2000);
+
     return () => {
-      source.close();
-      sourceRef.current = null;
+      if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [jobId]);
 
