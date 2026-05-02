@@ -47,11 +47,6 @@ resource "aws_iam_role_policy" "lambda" {
         Action   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
         Resource = ["arn:aws:logs:*:*:*"]
       },
-      {
-        Effect   = "Allow"
-        Action   = ["ec2:CreateNetworkInterface", "ec2:DescribeNetworkInterfaces", "ec2:DeleteNetworkInterface"]
-        Resource = ["*"]
-      }
     ]
   })
 }
@@ -70,11 +65,6 @@ resource "aws_lambda_function" "crawler" {
   image_uri     = "${aws_ecr_repository.crawler.repository_url}:latest"
   timeout       = 900  # 15 minutes
   memory_size   = 3008 # Chromium needs significant memory for page rendering
-
-  vpc_config {
-    subnet_ids         = var.private_subnet_ids
-    security_group_ids = [var.lambda_security_group_id]
-  }
 
   environment {
     variables = {
@@ -100,11 +90,6 @@ resource "aws_lambda_function" "consumer" {
 
   filename         = "${path.module}/placeholder.zip"
   source_code_hash = filebase64sha256("${path.module}/placeholder.zip")
-
-  vpc_config {
-    subnet_ids         = var.private_subnet_ids
-    security_group_ids = [var.lambda_security_group_id]
-  }
 
   environment {
     variables = {
@@ -133,11 +118,6 @@ resource "aws_lambda_function" "generator" {
   filename         = "${path.module}/placeholder.zip"
   source_code_hash = filebase64sha256("${path.module}/placeholder.zip")
 
-  vpc_config {
-    subnet_ids         = var.private_subnet_ids
-    security_group_ids = [var.lambda_security_group_id]
-  }
-
   environment {
     variables = {
       DATABASE_URL = var.database_url
@@ -164,11 +144,6 @@ resource "aws_lambda_function" "monitor" {
 
   filename         = "${path.module}/placeholder.zip"
   source_code_hash = filebase64sha256("${path.module}/placeholder.zip")
-
-  vpc_config {
-    subnet_ids         = var.private_subnet_ids
-    security_group_ids = [var.lambda_security_group_id]
-  }
 
   environment {
     variables = {
